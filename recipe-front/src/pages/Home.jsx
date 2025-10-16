@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -82,9 +83,12 @@ const Home = () => {
                   <p className="text-gray-600">
                     {recipe.description}
                   </p>
-                  <button className="mt-4 text-orange-500 font-semibold hover:text-orange-600 transition duration-200">
+                  <Link 
+                    to={`/recipe/${recipe.id}`}
+                    className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
+                  >
                     View Recipe →
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
