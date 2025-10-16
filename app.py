@@ -147,6 +147,25 @@ def get_user_recipes(user_id):
     finally:
         db.close()
 
+@app.route('/recipes/search', methods=['GET'])
+def search_recipes():
+    db = SessionLocal()
+    try:
+        # Get search query from query parameters
+        search_query = request.args.get('q', '').strip()
+        
+        if not search_query:
+            # If no query provided, return empty list
+            return jsonify([])
+        
+        # Search recipes by title (case-insensitive)
+        recipes = RecipeService.search_recipes(db, search_query)
+        return jsonify([recipe.model_dump() for recipe in recipes])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
 @app.route('/comments', methods=['POST'])
 def create_comment():
     db = SessionLocal()
