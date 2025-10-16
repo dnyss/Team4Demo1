@@ -4,6 +4,7 @@ from database import SessionLocal
 from services.user_service import UserService
 from services.recipe_service import RecipeService
 from services.comment_service import CommentService
+from utils.jwt_utils import generate_token, token_required
 from sqlalchemy.exc import ProgrammingError
 
 app = Flask(__name__)
@@ -23,6 +24,16 @@ def home():
 @app.route('/health')
 def health():
     return jsonify({"status": "OK", "database": "connected"})
+
+@app.route('/protected')
+@token_required
+def protected_route(current_user):
+    """Example protected route to test JWT authentication"""
+    return jsonify({
+        "message": f"Hello {current_user['username']}!",
+        "user_id": current_user['user_id'],
+        "email": current_user['email']
+    }), 200
 
 @app.route('/users', methods=['GET'])
 def get_users():
@@ -52,6 +63,38 @@ def create_user():
         return jsonify(user.model_dump()), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+    finally:
+        db.close()
+
+@app.route('/users/login', methods=['POST'])
+def login():
+    db = SessionLocal()
+    try:
+        login_data = request.json
+        
+        # Validate required fields
+        if not login_data or 'email' not in login_data or 'password' not in login_data:
+            return jsonify({"error": "Email and password are required"}), 400
+        
+        email = login_data['email']
+        password = login_data['password']
+        
+        # Authenticate user
+        user = UserService.authenticate_user(db, email, password)
+        
+        if not user:
+            return jsonify({"error": "Invalid email or password"}), 401
+        
+        # Generate JWT token
+        token = generate_token(user.id, user.name, user.email)
+        
+        return jsonify({
+            "token": token,
+            "user_id": user.id,
+            "username": user.name
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     finally:
         db.close()
 
