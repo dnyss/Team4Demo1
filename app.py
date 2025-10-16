@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from database import SessionLocal
 from services.user_service import UserService
 from services.recipe_service import RecipeService
@@ -6,6 +7,14 @@ from services.comment_service import CommentService
 from sqlalchemy.exc import ProgrammingError
 
 app = Flask(__name__)
+
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 @app.route('/')
 def home():
