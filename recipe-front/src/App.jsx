@@ -9,21 +9,71 @@ import Recipe from "./pages/Recipe";
 import CreateRecipe from "./pages/CreateRecipe";
 import UpdateRecipe from "./pages/UpdateRecipe";
 import NotFound from "./pages/NotFound";
+import AuthProtectedRoute from "./components/AuthProtectedRoute";
+import GuestOnlyRoute from "./components/GuestOnlyRoute";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public routes */}
+        {/* Public routes - accessible to everyone */}
         <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
         <Route path="/recipe" element={<Recipe />} />
-        <Route path="/user-recipes" element={<UserRecipes />} />
-        <Route path="/create-recipe" element={<CreateRecipe />} />
-        <Route path="/update-recipe" element={<UpdateRecipe />} />
+        <Route path="/recipe/:id" element={<Recipe />} />
+        
+        {/* Guest-only routes - redirect to home if authenticated */}
+        <Route 
+          path="/register" 
+          element={
+            <GuestOnlyRoute>
+              <Register />
+            </GuestOnlyRoute>
+          } 
+        />
+        <Route 
+          path="/login" 
+          element={
+            <GuestOnlyRoute>
+              <Login />
+            </GuestOnlyRoute>
+          } 
+        />
+        
+        {/* Protected routes - require authentication */}
+        <Route 
+          path="/user-recipes" 
+          element={
+            <AuthProtectedRoute>
+              <UserRecipes />
+            </AuthProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/create-recipe" 
+          element={
+            <AuthProtectedRoute>
+              <CreateRecipe />
+            </AuthProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/update-recipe" 
+          element={
+            <AuthProtectedRoute>
+              <UpdateRecipe />
+            </AuthProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/update-recipe/:id" 
+          element={
+            <AuthProtectedRoute>
+              <UpdateRecipe />
+            </AuthProtectedRoute>
+          } 
+        />
 
-        {/* Optional: fallback route */}
+        {/* Fallback route */}
         <Route path="*" element={<NotFound/>} />
       </Routes>
       <ToastContainer
@@ -42,3 +92,4 @@ function App() {
 }
 
 export default App;
+
