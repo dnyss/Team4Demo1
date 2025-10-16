@@ -14,6 +14,7 @@ const useRecipesStore = create((set) => ({
   currentRecipeError: null,
 
   // Actions for recipe list
+  // Actions
   fetchAllRecipes: async () => {
     set({ loading: true, error: null, searchQuery: '' });
     try {
