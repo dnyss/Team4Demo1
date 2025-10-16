@@ -2,12 +2,18 @@ import { create } from 'zustand';
 import apiClient from '../api/apiClient';
 
 const useRecipesStore = create((set) => ({
-  // State
+  // State for recipe list
   recipes: [],
   searchQuery: '',
   loading: false,
   error: null,
 
+  // State for recipe detail
+  currentRecipe: null,
+  currentRecipeLoading: false,
+  currentRecipeError: null,
+
+  // Actions for recipe list
   // Actions
   fetchAllRecipes: async () => {
     set({ loading: true, error: null, searchQuery: '' });
@@ -51,9 +57,40 @@ const useRecipesStore = create((set) => ({
     await useRecipesStore.getState().fetchAllRecipes();
   },
 
-  // Reset state (useful for cleanup)
+  // Actions for recipe detail
+  fetchRecipeById: async (id) => {
+    set({ currentRecipeLoading: true, currentRecipeError: null, currentRecipe: null });
+    try {
+      const response = await apiClient.get(`/recipes/${id}`);
+      set({ currentRecipe: response.data, currentRecipeLoading: false });
+    } catch (error) {
+      console.error('Error fetching recipe:', error);
+      const errorMessage = error.response?.status === 404 
+        ? 'Recipe not found' 
+        : error.response?.data?.error || 'Failed to fetch recipe details';
+      set({ 
+        currentRecipeError: errorMessage, 
+        currentRecipeLoading: false,
+        currentRecipe: null
+      });
+    }
+  },
+
+  clearCurrentRecipe: () => {
+    set({ currentRecipe: null, currentRecipeError: null, currentRecipeLoading: false });
+  },
+
+  // Reset all state
   reset: () => {
-    set({ recipes: [], searchQuery: '', loading: false, error: null });
+    set({ 
+      recipes: [], 
+      searchQuery: '', 
+      loading: false, 
+      error: null,
+      currentRecipe: null,
+      currentRecipeLoading: false,
+      currentRecipeError: null
+    });
   }
 }));
 

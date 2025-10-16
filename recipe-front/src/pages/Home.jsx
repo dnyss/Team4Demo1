@@ -1,3 +1,5 @@
+
+import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
@@ -103,64 +105,29 @@ const Home = () => {
 
         {/* Featured/Search Results Section */}
         <section>
-          <h3 className="text-2xl font-bold text-gray-800 mb-6">
-            {searchQuery ? 'Search Results' : 'Featured Recipes'}
-          </h3>
-          
-          {loading && (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-            </div>
-          )}
-          
-          {!loading && recipes.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">
-                {searchQuery 
-                  ? `No recipes found for "${searchQuery}". Try a different search term.`
-                  : 'No recipes available yet. Be the first to share a recipe!'
-                }
-              </p>
-            </div>
-          )}
-          
-          {!loading && recipes.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {recipes.map((recipe) => (
-                <div
-                  key={recipe.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
-                >
-                  <div className="h-48 bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-500">Recipe Image</span>
-                  </div>
-                  <div className="p-6">
-                    <h4 className="text-xl font-semibold text-gray-800 mb-2">
-                      {recipe.title}
-                    </h4>
-                    <div className="mb-4">
-                      <span className="inline-block bg-orange-100 text-orange-800 text-sm px-3 py-1 rounded-full">
-                        {recipe.dish_type}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-2">
-                      <strong>Servings:</strong> {recipe.servings || 'N/A'}
-                    </p>
-                    <p className="text-gray-600 text-sm mb-2">
-                      <strong>Prep Time:</strong> {recipe.preparation_time || 'N/A'}
-                    </p>
-                    {recipe.origin && (
-                      <p className="text-gray-600 text-sm mb-2">
-                        <strong>Origin:</strong> {recipe.origin}
-                      </p>
-                    )}
-                    <button 
-                      onClick={() => handleViewRecipe(recipe.id)}
-                      className="mt-4 text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
-                    >
-                      View Recipe →
-                    </button>
-                  </div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-6">Featured Recipes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {mockRecipes.map((recipe) => (
+              <div
+                key={recipe.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
+              >
+                <div className="h-48 bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500">Recipe Image</span>
+                </div>
+                <div className="p-6">
+                  <h4 className="text-xl font-semibold text-gray-800 mb-2">
+                    {recipe.title}
+                  </h4>
+                  <p className="text-gray-600">
+                    {recipe.description}
+                  </p>
+                  <Link 
+                    to={`/recipe/${recipe.id}`}
+                    className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
+                  >
+                    View Recipe →
+                  </Link>
                 </div>
               ))}
             </div>
