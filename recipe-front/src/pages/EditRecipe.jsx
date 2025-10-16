@@ -1,14 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import useRecipesStore from '../store/recipesStore';
 
-const CreateRecipe = () => {
+const EditRecipe = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { createRecipe } = useRecipesStore();
+  const { updateRecipe, fetchRecipeById, currentRecipe, loading, error } = useRecipesStore();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -22,8 +23,42 @@ const CreateRecipe = () => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
 
   const dishTypes = ['appetizer', 'main course', 'dessert', 'snack', 'beverage', 'other'];
+
+  // Fetch recipe data on mount
+  useEffect(() => {
+    const loadRecipe = async () => {
+      setIsFetching(true);
+      try {
+        await fetchRecipeById(id);
+      } catch (err) {
+        console.error('Error fetching recipe:', err);
+        toast.error('Failed to load recipe. Please try again.');
+        navigate('/user-recipes');
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    loadRecipe();
+  }, [id, fetchRecipeById, navigate]);
+
+  // Populate form when recipe data loads
+  useEffect(() => {
+    if (currentRecipe && currentRecipe.id === parseInt(id)) {
+      setFormData({
+        title: currentRecipe.title || '',
+        dish_type: currentRecipe.dish_type || '',
+        ingredients: currentRecipe.ingredients || '',
+        instructions: currentRecipe.instructions || '',
+        preparation_time: currentRecipe.preparation_time?.toString() || '',
+        origin: currentRecipe.origin || '',
+        servings: currentRecipe.servings?.toString() || ''
+      });
+    }
+  }, [currentRecipe, id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -118,18 +153,24 @@ const CreateRecipe = () => {
         servings: formData.servings ? parseInt(formData.servings) : null
       };
 
-      await createRecipe(recipeData);
-      toast.success('Recipe created successfully!');
+      await updateRecipe(id, recipeData);
+      toast.success('Recipe updated successfully!');
       navigate('/user-recipes');
     } catch (error) {
-      console.error('Error creating recipe:', error);
+      console.error('Error updating recipe:', error);
       
-      // Handle specific error messages from backend
-      if (error.message.includes('authentication') || error.message.includes('token')) {
+      // Handle specific error messages
+      if (error.message.includes('403') || error.message.includes('permission')) {
+        toast.error("You don't have permission to edit this recipe.");
+        navigate('/user-recipes');
+      } else if (error.message.includes('404') || error.message.includes('not found')) {
+        toast.error('Recipe not found.');
+        navigate('/user-recipes');
+      } else if (error.message.includes('authentication') || error.message.includes('token')) {
         toast.error('Session expired. Please log in again.');
         navigate('/login');
       } else {
-        toast.error(error.message || 'Failed to create recipe. Please try again.');
+        toast.error(error.message || 'Failed to update recipe. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -140,6 +181,46 @@ const CreateRecipe = () => {
     navigate('/user-recipes');
   };
 
+  // Loading state while fetching recipe
+  if (isFetching) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Icon icon="mdi:loading" className="h-12 w-12 animate-spin text-teal-500 mx-auto mb-4" />
+            <p className="text-gray-600">Loading recipe...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Error state if recipe fetch failed
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <Icon icon="mdi:alert-circle" className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Recipe</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={() => navigate('/user-recipes')}
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-white transition-colors hover:bg-teal-600"
+            >
+              <Icon icon="mdi:arrow-left" className="h-5 w-5" />
+              <span>Back to My Recipes</span>
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       <Navbar />
@@ -147,8 +228,8 @@ const CreateRecipe = () => {
         <div className="container mx-auto px-4 max-w-3xl">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Create New Recipe</h1>
-            <p className="text-gray-600">Share your culinary creation with the community</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Edit Recipe</h1>
+            <p className="text-gray-600">Update your recipe details</p>
           </div>
 
           {/* Form */}
@@ -303,12 +384,12 @@ const CreateRecipe = () => {
                 {isSubmitting ? (
                   <>
                     <Icon icon="mdi:loading" className="h-5 w-5 animate-spin" />
-                    <span>Creating...</span>
+                    <span>Updating...</span>
                   </>
                 ) : (
                   <>
                     <Icon icon="mdi:check" className="h-5 w-5" />
-                    <span>Create Recipe</span>
+                    <span>Update Recipe</span>
                   </>
                 )}
               </button>
@@ -330,4 +411,4 @@ const CreateRecipe = () => {
   );
 };
 
-export default CreateRecipe;
+export default EditRecipe;

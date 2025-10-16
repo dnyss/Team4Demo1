@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import apiClient from '../api/apiClient';
 
-const useRecipesStore = create((set) => ({
-  // State for recipe list
+const useRecipesStore = create((set, get) => ({
+  // State for recipe list (public recipes)
   recipes: [],
   searchQuery: '',
   loading: false,
@@ -12,6 +12,12 @@ const useRecipesStore = create((set) => ({
   currentRecipe: null,
   currentRecipeLoading: false,
   currentRecipeError: null,
+
+  // State for user's recipes (authenticated user only)
+  userRecipes: [],
+  userRecipesLoading: false,
+  userRecipesError: null,
+  userSearchQuery: '',
 
   // Actions for recipe list
   // Actions
@@ -80,6 +86,112 @@ const useRecipesStore = create((set) => ({
     set({ currentRecipe: null, currentRecipeError: null, currentRecipeLoading: false });
   },
 
+  // Actions for user's recipes (authenticated user)
+  fetchUserRecipes: async () => {
+    set({ userRecipesLoading: true, userRecipesError: null, userSearchQuery: '' });
+    try {
+      const response = await apiClient.get('/users/recipes');
+      set({ userRecipes: response.data, userRecipesLoading: false });
+    } catch (error) {
+      console.error('Error fetching user recipes:', error);
+      set({ 
+        userRecipesError: error.response?.data?.error || 'Failed to fetch your recipes', 
+        userRecipesLoading: false,
+        userRecipes: []
+      });
+    }
+  },
+
+  searchUserRecipes: async (query) => {
+    if (!query || query.trim() === '') {
+      set({ userSearchQuery: '' });
+      await get().fetchUserRecipes();
+      return;
+    }
+
+    set({ userRecipesLoading: true, userRecipesError: null, userSearchQuery: query });
+    try {
+      const response = await apiClient.get(`/users/recipes/search?q=${encodeURIComponent(query)}`);
+      set({ userRecipes: response.data, userRecipesLoading: false });
+    } catch (error) {
+      console.error('Error searching user recipes:', error);
+      set({ 
+        userRecipesError: error.response?.data?.error || 'Failed to search your recipes', 
+        userRecipesLoading: false,
+        userRecipes: []
+      });
+    }
+  },
+
+  clearUserSearch: async () => {
+    set({ userSearchQuery: '', userRecipesError: null });
+    await get().fetchUserRecipes();
+  },
+
+  createRecipe: async (recipeData) => {
+    set({ userRecipesLoading: true, userRecipesError: null });
+    try {
+      const response = await apiClient.post('/recipes', recipeData);
+      // Refresh user recipes to include the new recipe
+      await get().fetchUserRecipes();
+      return response.data;
+    } catch (error) {
+      console.error('Error creating recipe:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to create recipe';
+      set({ 
+        userRecipesError: errorMessage, 
+        userRecipesLoading: false 
+      });
+      throw new Error(errorMessage);
+    }
+  },
+
+  updateRecipe: async (id, recipeData) => {
+    set({ userRecipesLoading: true, userRecipesError: null });
+    try {
+      const response = await apiClient.put(`/recipes/${id}`, recipeData);
+      // Refresh user recipes to show updated data
+      await get().fetchUserRecipes();
+      return response.data;
+    } catch (error) {
+      console.error('Error updating recipe:', error);
+      const errorMessage = error.response?.status === 403
+        ? 'You do not have permission to edit this recipe'
+        : error.response?.status === 404
+        ? 'Recipe not found'
+        : error.response?.data?.error || 'Failed to update recipe';
+      set({ 
+        userRecipesError: errorMessage, 
+        userRecipesLoading: false 
+      });
+      throw new Error(errorMessage);
+    }
+  },
+
+  deleteRecipe: async (id) => {
+    set({ userRecipesLoading: true, userRecipesError: null });
+    try {
+      await apiClient.delete(`/recipes/${id}`);
+      // Remove the recipe from the local state
+      set(state => ({
+        userRecipes: state.userRecipes.filter(recipe => recipe.id !== id),
+        userRecipesLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+      const errorMessage = error.response?.status === 403
+        ? 'You do not have permission to delete this recipe'
+        : error.response?.status === 404
+        ? 'Recipe not found'
+        : error.response?.data?.error || 'Failed to delete recipe';
+      set({ 
+        userRecipesError: errorMessage, 
+        userRecipesLoading: false 
+      });
+      throw new Error(errorMessage);
+    }
+  },
+
   // Reset all state
   reset: () => {
     set({ 
@@ -89,7 +201,11 @@ const useRecipesStore = create((set) => ({
       error: null,
       currentRecipe: null,
       currentRecipeLoading: false,
-      currentRecipeError: null
+      currentRecipeError: null,
+      userRecipes: [],
+      userRecipesLoading: false,
+      userRecipesError: null,
+      userSearchQuery: ''
     });
   }
 }));

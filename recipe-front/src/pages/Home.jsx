@@ -1,6 +1,5 @@
-
 import { Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -47,10 +46,6 @@ const Home = () => {
   const handleClearSearch = () => {
     setSearchTerm('');
     clearSearch();
-  };
-
-  const handleViewRecipe = (recipeId) => {
-    toast.success(`Clicked recipe with id: ${recipeId}`);
   };
 
   return (
@@ -107,31 +102,37 @@ const Home = () => {
         <section>
           <h3 className="text-2xl font-bold text-gray-800 mb-6">Featured Recipes</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {mockRecipes.map((recipe) => (
-              <div
-                key={recipe.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
-              >
-                <div className="h-48 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-500">Recipe Image</span>
+            {recipes && recipes.length > 0 ? (
+              recipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
+                >
+                  <div className="h-48 bg-gray-200 flex items-center justify-center">
+                    <span className="text-gray-500">Recipe Image</span>
+                  </div>
+                  <div className="p-6">
+                    <h4 className="text-xl font-semibold text-gray-800 mb-2">
+                      {recipe.title}
+                    </h4>
+                    <p className="text-gray-600">
+                      {recipe.description}
+                    </p>
+                    <Link 
+                      to={`/recipe/${recipe.id}`}
+                      className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
+                    >
+                      View Recipe →
+                    </Link>
+                  </div>
                 </div>
-                <div className="p-6">
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">
-                    {recipe.title}
-                  </h4>
-                  <p className="text-gray-600">
-                    {recipe.description}
-                  </p>
-                  <Link 
-                    to={`/recipe/${recipe.id}`}
-                    className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
-                  >
-                    View Recipe →
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              <div className="col-span-3 text-center text-gray-500 py-12">
+                No recipes found.
+              </div>
+            )}
+          </div>
         </section>
       </main>
 

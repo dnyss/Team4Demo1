@@ -1,165 +1,272 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Icon } from '@iconify/react';
+import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Link, useNavigate } from 'react-router-dom';
-import { Icon } from '@iconify/react';
+import ConfirmDialog from '../components/ConfirmDialog';
+import useRecipesStore from '../store/recipesStore';
 
 const UserRecipes = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const navigate = useNavigate();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState(null);
 
-  // Mock user recipe data
-  const [userRecipes, setUserRecipes] = useState([
-    {
-      id: 1,
-      title: "My Secret Chocolate Chip Cookies",
-      description: "Soft and chewy chocolate chip cookies that are perfect for any occasion. Ready in just 30 minutes!",
-      isOwner: true
-    },
-    {
-      id: 2,
-      title: "Grandma's Vegetable Stir Fry",
-      description: "A quick and healthy vegetable stir fry with a savory sauce. Packed with fresh vegetables and flavor.",
-      isOwner: true
-    },
-    {
-      id: 3,
-      title: "Homemade Creamy Tomato Soup",
-      description: "Comforting homemade tomato soup with a creamy texture. Perfect for chilly days and pairs well with grilled cheese.",
-      isOwner: true
+  const {
+    userRecipes,
+    userRecipesLoading,
+    userRecipesError,
+    userSearchQuery,
+    fetchUserRecipes,
+    searchUserRecipes,
+    clearUserSearch,
+    deleteRecipe
+  } = useRecipesStore();
+
+  // Fetch user recipes on mount
+  useEffect(() => {
+    fetchUserRecipes();
+  }, [fetchUserRecipes]);
+
+  // Show error toast when error occurs
+  useEffect(() => {
+    if (userRecipesError) {
+      toast.error(userRecipesError);
     }
-  ]);
+  }, [userRecipesError]);
+
+  // Debounced search - wait 300ms after user stops typing
+  useEffect(() => {
+    if (searchTerm === '') {
+      clearUserSearch();
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      searchUserRecipes(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, searchUserRecipes, clearUserSearch]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Searching user recipes for:', searchTerm);
+    if (searchTerm.trim()) {
+      searchUserRecipes(searchTerm);
+    }
   };
 
-  const handleEditRedirect = () => {
-    navigate('/user-recipes');
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    clearUserSearch();
   };
 
-  const handleDeleteRecipe = (recipeId) => {
-    console.log('Deleting recipe with ID:', recipeId);
-    // In the future, this will show confirmation modal and then delete
-    // For now, just remove from state for UI demonstration
-    //setUserRecipes(prevRecipes => prevRecipes.filter(recipe => recipe.id !== recipeId));
+  const handleDeleteClick = (recipe) => {
+    setRecipeToDelete(recipe);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (recipeToDelete) {
+      try {
+        await deleteRecipe(recipeToDelete.id);
+        toast.success(`"${recipeToDelete.title}" has been deleted successfully`);
+        setDeleteDialogOpen(false);
+        setRecipeToDelete(null);
+      } catch (error) {
+        toast.error(error.message || 'Failed to delete recipe');
+      }
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setRecipeToDelete(null);
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
       <Navbar />
-
-      <main className="flex-grow container mx-auto px-4 py-8">
-        {/* Header Section */}
-        <section className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4">
-            My Recipes
-          </h2>
-          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            Manage your personal recipe collection. Edit, delete, or create new recipes to share with the community.
-          </p>
-
-          <div className="flex justify-center space-x-4 mb-8">
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4">
+          {/* Header Section */}
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-3xl font-bold text-gray-800">My Recipes</h1>
             <Link
-              to="/create-recipe"
-              className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition duration-200"
+              to="/recipe/new"
+              className="flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-white transition-colors hover:bg-teal-600"
             >
-              Create New Recipe
+              <Icon icon="mdi:plus-circle" className="h-5 w-5" />
+              <span>Create New Recipe</span>
             </Link>
           </div>
 
           {/* Search Bar */}
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="flex shadow-lg rounded-lg overflow-hidden">
-              <input
-                type="text"
-                placeholder="Search through your recipes..."
-                className="flex-grow px-6 py-4 border-none focus:outline-none"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="mb-6">
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <Icon
+                  icon="mdi:magnify"
+                  className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  placeholder="Search your recipes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <Icon icon="mdi:close-circle" className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
               <button
                 type="submit"
-                className="bg-orange-500 text-white px-8 py-4 hover:bg-orange-600 transition duration-200"
+                className="rounded-lg bg-teal-500 px-6 py-2 text-white transition-colors hover:bg-teal-600"
               >
                 Search
               </button>
-            </div>
-          </form>
-        </section>
+            </form>
+            {userSearchQuery && (
+              <p className="mt-2 text-sm text-gray-600">
+                Showing results for: <span className="font-semibold">"{userSearchQuery}"</span>
+              </p>
+            )}
+          </div>
 
-        {/* User Recipes Section */}
-        <section>
-          <h3 className="text-2xl font-bold text-gray-800 mb-6">Your Recipe Collection ({userRecipes.length})</h3>
-
-          {userRecipes.length === 0 ? (
-            <div className="text-center py-12">
-              <Icon icon="mdi:chef-hat" className="text-6xl text-gray-400 mx-auto mb-4" />
-              <h4 className="text-xl font-semibold text-gray-600 mb-2">No recipes yet</h4>
-              <p className="text-gray-500 mb-6">Start by creating your first recipe!</p>
-              <Link
-                to="/create-recipe"
-                className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition duration-200"
-              >
-                Create Your First Recipe
-              </Link>
+          {/* Loading State */}
+          {userRecipesLoading && (
+            <div className="flex justify-center py-12">
+              <Icon icon="mdi:loading" className="h-12 w-12 animate-spin text-teal-500" />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          )}
+
+          {/* Error State */}
+          {!userRecipesLoading && userRecipesError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+              <div className="flex items-center gap-2">
+                <Icon icon="mdi:alert-circle" className="h-5 w-5" />
+                <p className="font-semibold">Error loading recipes</p>
+              </div>
+              <p className="mt-1 text-sm">{userRecipesError}</p>
+            </div>
+          )}
+
+          {/* Recipes Grid */}
+          {!userRecipesLoading && !userRecipesError && userRecipes.length > 0 && (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {userRecipes.map((recipe) => (
                 <div
                   key={recipe.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
+                  className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                 >
-                  {/* Recipe Image */}
-                  <div className="h-48 bg-gray-200 flex items-center justify-center relative">
-                    <span className="text-gray-500">Recipe Image</span>
-                    <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-sm">
-                      Your Recipe
+                  <div className="p-6">
+                    <h2 className="mb-2 text-xl font-bold text-gray-800">{recipe.title}</h2>
+                    <div className="mb-4 space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:food" className="h-4 w-4 text-teal-500" />
+                        <span className="capitalize">{recipe.dish_type || 'Not specified'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:clock-outline" className="h-4 w-4 text-teal-500" />
+                        <span>{recipe.preparation_time || 'N/A'} mins</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:account-group" className="h-4 w-4 text-teal-500" />
+                        <span>{recipe.servings || 'N/A'} servings</span>
+                      </div>
+                      {recipe.origin && (
+                        <div className="flex items-center gap-2">
+                          <Icon icon="mdi:earth" className="h-4 w-4 text-teal-500" />
+                          <span>{recipe.origin}</span>
+                        </div>
+                      )}
                     </div>
+
                     {/* Action Buttons */}
-                    <div className="absolute top-2 right-2 flex space-x-2">
+                    <div className="flex items-center gap-2">
                       <Link
-                        to="/update-recipe"
-                        className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition duration-200 shadow-lg"
-                        title="Edit Recipe"
+                        to={`/recipe/${recipe.id}/edit`}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-600"
                       >
-                        <Icon icon="mdi:pencil" width="18" height="18" />
+                        <Icon icon="mdi:pencil" className="h-4 w-4" />
+                        <span>Edit</span>
                       </Link>
                       <button
-                        onClick={() => handleDeleteRecipe(recipe.id)}
-                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-200 shadow-lg"
-                        title="Delete Recipe"
+                        onClick={() => handleDeleteClick(recipe)}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white transition-colors hover:bg-red-600"
                       >
-                        <Icon icon="mdi:trash-can" width="18" height="18" />
+                        <Icon icon="mdi:delete" className="h-4 w-4" />
+                        <span>Delete</span>
                       </button>
-                    </div>
-                  </div>
-
-                  {/* Recipe Content */}
-                  <div className="p-6">
-                    <h4 className="text-xl font-semibold text-gray-800 mb-2 pr-12">
-                      {recipe.title}
-                    </h4>
-                    <p className="text-gray-600 mb-4">
-                      {recipe.description}
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <button className="text-orange-500 font-semibold hover:text-orange-600 transition duration-200">
-                        View Recipe →
-                      </button>
+                      <Link
+                        to={`/recipe/${recipe.id}`}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300"
+                      >
+                        <Icon icon="mdi:eye" className="h-4 w-4" />
+                        <span>View</span>
+                      </Link>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </section>
-      </main>
+
+          {/* Empty State */}
+          {!userRecipesLoading && !userRecipesError && userRecipes.length === 0 && (
+            <div className="rounded-lg border-2 border-dashed border-gray-300 bg-white py-12 text-center">
+              <Icon icon="mdi:food-off" className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+              <h3 className="mb-2 text-xl font-semibold text-gray-800">
+                {userSearchQuery ? 'No recipes found' : 'No recipes yet'}
+              </h3>
+              <p className="mb-6 text-gray-600">
+                {userSearchQuery
+                  ? `No recipes match "${userSearchQuery}". Try a different search term.`
+                  : "You haven't created any recipes yet. Start sharing your culinary creations!"}
+              </p>
+              {!userSearchQuery && (
+                <Link
+                  to="/recipe/new"
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-white transition-colors hover:bg-teal-600"
+                >
+                  <Icon icon="mdi:plus-circle" className="h-5 w-5" />
+                  <span>Create Your First Recipe</span>
+                </Link>
+              )}
+              {userSearchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-6 py-3 text-gray-700 transition-colors hover:bg-gray-300"
+                >
+                  <Icon icon="mdi:close-circle" className="h-5 w-5" />
+                  <span>Clear Search</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Delete Recipe"
+        message={`Are you sure you want to delete "${recipeToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
       <Footer />
-    </div>
+    </>
   );
 };
 

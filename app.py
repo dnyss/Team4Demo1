@@ -99,11 +99,17 @@ def login():
         db.close()
 
 @app.route('/recipes', methods=['POST'])
-def create_recipe():
+@token_required
+def create_recipe(current_user):
+    """Create a new recipe for the authenticated user"""
     db = SessionLocal()
     try:
         recipe_data = request.json
         from schemas.recipe_schemas import RecipeCreate
+        
+        # Automatically set the user_id from the JWT token
+        recipe_data['user_id'] = current_user['user_id']
+        
         recipe_create = RecipeCreate(**recipe_data)
         recipe = RecipeService.create_recipe(db, recipe_create)
         return jsonify(recipe.model_dump()), 201
@@ -131,6 +137,99 @@ def get_recipe(recipe_id):
         if recipe:
             return jsonify(recipe.model_dump())
         return jsonify({"error": "Recipe not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
+@app.route('/recipes/<int:recipe_id>', methods=['PUT'])
+@token_required
+def update_recipe(current_user, recipe_id):
+    """Update a recipe - only the owner can update"""
+    db = SessionLocal()
+    try:
+        # Check if recipe exists
+        recipe = RecipeService.get_recipe_by_id(db, recipe_id)
+        if not recipe:
+            return jsonify({"error": "Recipe not found"}), 404
+        
+        # Check if user owns the recipe
+        if recipe.user_id != current_user['user_id']:
+            return jsonify({"error": "Forbidden: You can only edit your own recipes"}), 403
+        
+        # Update the recipe
+        recipe_data = request.json
+        from schemas.recipe_schemas import RecipeUpdate
+        recipe_update = RecipeUpdate(**recipe_data)
+        updated_recipe = RecipeService.update_recipe(db, recipe_id, recipe_update.model_dump(exclude_unset=True))
+        
+        if updated_recipe:
+            return jsonify(updated_recipe.model_dump())
+        return jsonify({"error": "Failed to update recipe"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        db.close()
+
+@app.route('/recipes/<int:recipe_id>', methods=['DELETE'])
+@token_required
+def delete_recipe(current_user, recipe_id):
+    """Delete a recipe - only the owner can delete"""
+    db = SessionLocal()
+    try:
+        # Check if recipe exists
+        recipe = RecipeService.get_recipe_by_id(db, recipe_id)
+        if not recipe:
+            return jsonify({"error": "Recipe not found"}), 404
+        
+        # Check if user owns the recipe
+        if recipe.user_id != current_user['user_id']:
+            return jsonify({"error": "Forbidden: You can only delete your own recipes"}), 403
+        
+        # Delete the recipe
+        success = RecipeService.delete_recipe(db, recipe_id)
+        if success:
+            return '', 204
+        return jsonify({"error": "Failed to delete recipe"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
+@app.route('/users/recipes', methods=['GET'])
+@token_required
+def get_current_user_recipes(current_user):
+    """Get all recipes for the authenticated user"""
+    db = SessionLocal()
+    try:
+        recipes = RecipeService.get_recipes_by_user(db, current_user['user_id'])
+        return jsonify([recipe.model_dump() for recipe in recipes])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
+@app.route('/users/recipes/search', methods=['GET'])
+@token_required
+def search_current_user_recipes(current_user):
+    """Search within the authenticated user's recipes"""
+    db = SessionLocal()
+    try:
+        search_query = request.args.get('q', '').strip()
+        
+        if not search_query:
+            return jsonify([])
+        
+        # Get all user recipes first, then filter by search
+        all_user_recipes = RecipeService.get_recipes_by_user(db, current_user['user_id'])
+        
+        # Filter recipes by title (case-insensitive)
+        filtered_recipes = [
+            recipe for recipe in all_user_recipes
+            if search_query.lower() in recipe.title.lower()
+        ]
+        
+        return jsonify([recipe.model_dump() for recipe in filtered_recipes])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

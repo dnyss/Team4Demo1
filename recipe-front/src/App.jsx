@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import UserRecipes from "./pages/UserRecipes";
 import Recipe from "./pages/Recipe";
 import CreateRecipe from "./pages/CreateRecipe";
+import EditRecipe from "./pages/EditRecipe";
 import UpdateRecipe from "./pages/UpdateRecipe";
 import NotFound from "./pages/NotFound";
 import AuthProtectedRoute from "./components/AuthProtectedRoute";
@@ -48,6 +49,23 @@ function App() {
             </AuthProtectedRoute>
           } 
         />
+        <Route 
+          path="/recipe/new" 
+          element={
+            <AuthProtectedRoute>
+              <CreateRecipe />
+            </AuthProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/recipe/:id/edit" 
+          element={
+            <AuthProtectedRoute>
+              <EditRecipe />
+            </AuthProtectedRoute>
+          } 
+        />
+        {/* Legacy routes for backward compatibility */}
         <Route 
           path="/create-recipe" 
           element={
