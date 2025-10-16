@@ -1,33 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import useRecipesStore from '../store/recipesStore';
 
 const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { recipes, loading, error, searchQuery, fetchAllRecipes, searchRecipes, clearSearch } = useRecipesStore();
 
-  // Mock recipe data
-  const mockRecipes = [
-    {
-      id: 1,
-      title: "Classic Chocolate Chip Cookies",
-      description: "Soft and chewy chocolate chip cookies that are perfect for any occasion. Ready in just 30 minutes!"
-    },
-    {
-      id: 2,
-      title: "Vegetable Stir Fry",
-      description: "A quick and healthy vegetable stir fry with a savory sauce. Packed with fresh vegetables and flavor."
-    },
-    {
-      id: 3,
-      title: "Creamy Tomato Soup",
-      description: "Comforting homemade tomato soup with a creamy texture. Perfect for chilly days and pairs well with grilled cheese."
+  // Fetch all recipes on component mount
+  useEffect(() => {
+    fetchAllRecipes();
+  }, [fetchAllRecipes]);
+
+  // Show error toast when error occurs
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
     }
-  ];
+  }, [error]);
+
+  // Debounced search - wait 300ms after user stops typing
+  useEffect(() => {
+    if (searchTerm === '') {
+      // If search is cleared, fetch all recipes
+      clearSearch();
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      searchRecipes(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, searchRecipes, clearSearch]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Searching for:', searchTerm);
-    // In the future, this will trigger an actual search
+    if (searchTerm.trim()) {
+      searchRecipes(searchTerm);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    clearSearch();
+  };
+
+  const handleViewRecipe = (recipeId) => {
+    toast.success(`Clicked recipe with id: ${recipeId}`);
   };
 
   return (
@@ -52,43 +73,98 @@ const Home = () => {
                 className="flex-grow px-6 py-4 border-none focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={loading}
               />
               <button
                 type="submit"
-                className="bg-orange-500 text-white px-8 py-4 hover:bg-orange-600 transition duration-200"
+                className="bg-orange-500 text-white px-8 py-4 hover:bg-orange-600 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={loading}
               >
-                Search
+                {loading ? 'Searching...' : 'Search'}
               </button>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="bg-gray-500 text-white px-6 py-4 hover:bg-gray-600 transition duration-200"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </form>
+          
+          {searchQuery && (
+            <p className="mt-4 text-gray-600">
+              Showing results for: <span className="font-semibold">{searchQuery}</span>
+            </p>
+          )}
         </section>
 
-        {/* Featured Recipes Section */}
+        {/* Featured/Search Results Section */}
         <section>
-          <h3 className="text-2xl font-bold text-gray-800 mb-6">Featured Recipes</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {mockRecipes.map((recipe) => (
-              <div
-                key={recipe.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
-              >
-                <div className="h-48 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-500">Recipe Image</span>
+          <h3 className="text-2xl font-bold text-gray-800 mb-6">
+            {searchQuery ? 'Search Results' : 'Featured Recipes'}
+          </h3>
+          
+          {loading && (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+            </div>
+          )}
+          
+          {!loading && recipes.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-600 text-lg">
+                {searchQuery 
+                  ? `No recipes found for "${searchQuery}". Try a different search term.`
+                  : 'No recipes available yet. Be the first to share a recipe!'
+                }
+              </p>
+            </div>
+          )}
+          
+          {!loading && recipes.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {recipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
+                >
+                  <div className="h-48 bg-gray-200 flex items-center justify-center">
+                    <span className="text-gray-500">Recipe Image</span>
+                  </div>
+                  <div className="p-6">
+                    <h4 className="text-xl font-semibold text-gray-800 mb-2">
+                      {recipe.title}
+                    </h4>
+                    <div className="mb-4">
+                      <span className="inline-block bg-orange-100 text-orange-800 text-sm px-3 py-1 rounded-full">
+                        {recipe.dish_type}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-2">
+                      <strong>Servings:</strong> {recipe.servings || 'N/A'}
+                    </p>
+                    <p className="text-gray-600 text-sm mb-2">
+                      <strong>Prep Time:</strong> {recipe.preparation_time || 'N/A'}
+                    </p>
+                    {recipe.origin && (
+                      <p className="text-gray-600 text-sm mb-2">
+                        <strong>Origin:</strong> {recipe.origin}
+                      </p>
+                    )}
+                    <button 
+                      onClick={() => handleViewRecipe(recipe.id)}
+                      className="mt-4 text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
+                    >
+                      View Recipe →
+                    </button>
+                  </div>
                 </div>
-                <div className="p-6">
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">
-                    {recipe.title}
-                  </h4>
-                  <p className="text-gray-600">
-                    {recipe.description}
-                  </p>
-                  <button className="mt-4 text-orange-500 font-semibold hover:text-orange-600 transition duration-200">
-                    View Recipe →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </main>
 
