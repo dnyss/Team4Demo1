@@ -70,7 +70,38 @@ def test_create_recipe(client, monkeypatch):
     assert data["title"] == "Pizza"
 
 
+def test_get_recipe_by_id_success(client, monkeypatch):
+    """Test successful recipe retrieval by ID"""
+    from services import recipe_service
+
+    class DummyRecipe:
+        def model_dump(self):
+            return {
+                "id": 1,
+                "title": "Chocolate Chip Cookies",
+                "dish_type": "Dessert",
+                "ingredients": "flour, sugar, chocolate chips",
+                "instructions": "Mix and bake",
+                "preparation_time": "30 minutes",
+                "origin": "USA",
+                "servings": 24,
+                "user_id": 1
+            }
+
+    monkeypatch.setattr(recipe_service.RecipeService, "get_recipe_by_id", lambda db, rid: DummyRecipe())
+
+    response = client.get('/recipes/1')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["id"] == 1
+    assert data["title"] == "Chocolate Chip Cookies"
+    assert data["dish_type"] == "Dessert"
+    assert "ingredients" in data
+    assert "instructions" in data
+
+
 def test_get_recipe_not_found(client, monkeypatch):
+    """Test 404 response for non-existent recipe ID"""
     from services import recipe_service
     monkeypatch.setattr(recipe_service.RecipeService, "get_recipe_by_id", lambda db, rid: None)
 
@@ -78,6 +109,27 @@ def test_get_recipe_not_found(client, monkeypatch):
     assert response.status_code == 404
     data = response.get_json()
     assert "Recipe not found" in data["error"]
+
+
+def test_get_recipe_invalid_id_format(client):
+    """Test invalid ID format returns 404"""
+    response = client.get('/recipes/invalid')
+    assert response.status_code == 404
+
+
+def test_get_recipe_database_error(client, monkeypatch):
+    """Test database error handling returns 500"""
+    from services import recipe_service
+    
+    def mock_error(db, rid):
+        raise Exception("Database connection failed")
+    
+    monkeypatch.setattr(recipe_service.RecipeService, "get_recipe_by_id", mock_error)
+
+    response = client.get('/recipes/1')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert "error" in data
 
 
 def test_get_comments(client, monkeypatch):

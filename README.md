@@ -1,7 +1,7 @@
 # Team 4 Demo 1
 
 ## Community Recipee Book
-Dockerized Flask application where users can add recipes to a community recipe book.
+Dockerized Flask application. A shared cookbook app where users can add, browse, and rate recipes.
 
 ## Project setup
 ### 1️ Clone the repository
@@ -12,7 +12,7 @@ cd Team4Demo1
 
 ### 2 Build and start all services
 ```bash
-docker compose up --build
+./init.sh
 ```
 
 ### 3 Stop services
@@ -25,4 +25,8 @@ docker compose down
 ## Run tests inside the running container
 ```bash
 docker compose exec web pytest -v
+```
+## Run pre-commit
+```bash
+docker compose exec web pre-commit run --all-files
 ```
