@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -7,6 +7,7 @@ import useRecipesStore from '../store/recipesStore';
 
 const Recipe = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { currentRecipe, currentRecipeLoading, currentRecipeError, fetchRecipeById, clearCurrentRecipe } = useRecipesStore();
 
   useEffect(() => {
@@ -37,13 +38,14 @@ const Recipe = () => {
           <div className="max-w-4xl mx-auto">
             {/* Go Back Button */}
             <div className="mb-6">
-              <Link
-                to="/"
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
                 className="inline-flex items-center text-orange-500 hover:text-orange-600 transition duration-200"
               >
                 <Icon icon="mdi:arrow-left" className="mr-2" />
                 Back to Recipes
-              </Link>
+              </button>
             </div>
 
             {/* Loading State */}
@@ -83,7 +85,7 @@ const Recipe = () => {
                   {/* Dish Type Badge */}
                   {currentRecipe.dish_type && (
                     <div className="mb-4">
-                      <span className="inline-block bg-white bg-opacity-20 text-white text-sm px-4 py-1 rounded-full">
+                      <span className="inline-block bg-white bg-opacity-20 text-orange-500 text-sm px-4 py-1 rounded-full">
                         {currentRecipe.dish_type}
                       </span>
                     </div>

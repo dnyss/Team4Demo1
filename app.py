@@ -161,7 +161,7 @@ def update_recipe(current_user, recipe_id):
         recipe_data = request.json
         from schemas.recipe_schemas import RecipeUpdate
         recipe_update = RecipeUpdate(**recipe_data)
-        updated_recipe = RecipeService.update_recipe(db, recipe_id, recipe_update.model_dump(exclude_unset=True))
+        updated_recipe = RecipeService.update_recipe(db, recipe_id, recipe_update)
         
         if updated_recipe:
             return jsonify(updated_recipe.model_dump())
