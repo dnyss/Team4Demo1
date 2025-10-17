@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CommentBox from '../components/CommentBox';
 import useRecipesStore from '../store/recipesStore';
 
 const Recipe = () => {
@@ -81,6 +82,14 @@ const Recipe = () => {
                 {/* Recipe Header */}
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-8">
                   <h1 className="text-4xl font-bold mb-4">{currentRecipe.title}</h1>
+                  
+                  {/* Author Info */}
+                  {currentRecipe.user_name && (
+                    <div className="mb-4 flex items-center">
+                      <Icon icon="mdi:account-circle" className="mr-2 text-2xl" />
+                      <span className="text-lg">by <span className="font-semibold">{currentRecipe.user_name}</span></span>
+                    </div>
+                  )}
                   
                   {/* Dish Type Badge */}
                   {currentRecipe.dish_type && (
@@ -163,6 +172,11 @@ const Recipe = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Comments Section */}
+            {currentRecipe && !currentRecipeLoading && !currentRecipeError && (
+              <CommentBox recipeId={currentRecipe.id} />
             )}
           </div>
         </div>

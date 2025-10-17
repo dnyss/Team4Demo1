@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import useRecipesStore from '../store/recipesStore';
+import { Icon } from '@iconify/react';
 
 const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -112,19 +113,25 @@ const Home = () => {
                     <h2 className="mb-2 text-xl font-bold text-gray-800">{recipe.title}</h2>
                     <div className="mb-4 space-y-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-teal-500">{recipe.user_name || 'Unknown'}</span>
+                        <span className="font-semibold text-teal-500">
+                          @{recipe.user_name || 'Unknown'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Icon icon="mdi:food" className="h-4 w-4 text-teal-500" />
                         <span className="capitalize">{recipe.dish_type || 'Not specified'}</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Icon icon="mdi:clock-outline" className="h-4 w-4 text-orange-500" />
                         <span>{recipe.preparation_time || 'N/A'} mins</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Icon icon="mdi:account-group" className="h-4 w-4 text-orange-500" />
                         <span>{recipe.servings || 'N/A'} servings</span>
                       </div>
                       {recipe.origin && (
                         <div className="flex items-center gap-2">
+                          <Icon icon="mdi:earth" className="h-4 w-4 text-orange-500" />
                           <span>{recipe.origin}</span>
                         </div>
                       )}

@@ -45,26 +45,76 @@ def test_create_user(client, monkeypatch):
 
     class DummyUser:
         def model_dump(self):
-            return {"id": 1, "name": "John"}
+            return {"id": 1, "name": "John", "email": "john@example.com"}
 
     monkeypatch.setattr(user_service.UserService, "create_user", lambda db, user: DummyUser())
 
-    response = client.post('/users', json={"name": "John", "email": "john@example.com"})
+    response = client.post('/users', json={"name": "John", "email": "john@example.com", "password": "password123"})
     assert response.status_code == 201
     data = response.get_json()
     assert data["name"] == "John"
 
 
 def test_create_recipe(client, monkeypatch):
-    from services import recipe_service
+    """Test recipe creation requires authentication"""
+    from services import recipe_service, user_service
+    from database import SessionLocal
+    from repositories.user_repository import UserRepository
+
+    # Create a test user in the database
+    db = SessionLocal()
+    try:
+        user_data = {
+            'name': 'testuser',
+            'email': 'test@example.com',
+            'password': 'password123'
+        }
+        test_user = UserRepository.create_user(db, user_data)
+        db.commit()
+        db.refresh(test_user)
+        user_id = test_user.id
+    finally:
+        db.close()
 
     class DummyRecipe:
         def model_dump(self):
-            return {"id": 1, "title": "Pizza"}
+            return {
+                "id": 1, 
+                "title": "Pizza", 
+                "dish_type": "Main Course",
+                "ingredients": "dough, cheese, tomato",
+                "instructions": "Bake it",
+                "user_id": user_id,
+                "user_name": "testuser"
+            }
 
     monkeypatch.setattr(recipe_service.RecipeService, "create_recipe", lambda db, recipe: DummyRecipe())
 
-    response = client.post('/recipes', json={"title": "Pizza"})
+    # Test without authentication - should fail
+    response = client.post('/recipes', json={
+        "title": "Pizza",
+        "dish_type": "Main Course",
+        "ingredients": "dough, cheese, tomato",
+        "instructions": "Bake it"
+    })
+    assert response.status_code == 401
+    
+    # Mock token validation for authenticated test
+    from utils import jwt_utils
+    def mock_decode(token):
+        return {"user_id": user_id, "username": "testuser"}
+    
+    monkeypatch.setattr(jwt_utils, "decode_token", mock_decode)
+    
+    # Test with authentication
+    response = client.post('/recipes', 
+                          json={
+                              "title": "Pizza",
+                              "dish_type": "Main Course",
+                              "ingredients": "dough, cheese, tomato",
+                              "instructions": "Bake it"
+                          },
+                          headers={"Authorization": "Bearer fake_token"})
     assert response.status_code == 201
     data = response.get_json()
     assert data["title"] == "Pizza"

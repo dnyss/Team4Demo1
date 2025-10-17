@@ -31,6 +31,7 @@ class RecipeResponse(RecipeBase):
     id: int
     user_id: int
     creation_date: datetime
+    user_name: Optional[str] = None
 
     class Config:
         from_attributes = True

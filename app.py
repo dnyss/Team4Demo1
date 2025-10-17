@@ -1,11 +1,13 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flasgger import Swagger
 from database import SessionLocal
 from services.user_service import UserService
 from services.recipe_service import RecipeService
 from services.comment_service import CommentService
 from utils.jwt_utils import generate_token, token_required
 from sqlalchemy.exc import ProgrammingError
+from swagger_config import swagger_config, swagger_template
 
 app = Flask(__name__)
 
@@ -17,18 +19,83 @@ CORS(app, resources={
     }
 })
 
+# Initialize Swagger UI
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
+
 @app.route('/')
 def home():
+    """
+    Home endpoint
+    ---
+    tags:
+      - Health
+    responses:
+      200:
+        description: Welcome message
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: ¡Welcome!
+            status:
+              type: string
+              example: running
+    """
     return jsonify({"message": "¡Welcome!", "status": "running"})
 
 @app.route('/health')
 def health():
+    """
+    Health check endpoint
+    ---
+    tags:
+      - Health
+    responses:
+      200:
+        description: System health status
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: OK
+            database:
+              type: string
+              example: connected
+    """
     return jsonify({"status": "OK", "database": "connected"})
 
 @app.route('/protected')
 @token_required
 def protected_route(current_user):
-    """Example protected route to test JWT authentication"""
+    """
+    Protected route example - requires JWT authentication
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Successfully authenticated
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Hello John Doe!
+            user_id:
+              type: integer
+              example: 1
+            email:
+              type: string
+              example: john@example.com
+      401:
+        description: Unauthorized - missing or invalid token
+        schema:
+          $ref: '#/definitions/Error'
+    """
     return jsonify({
         "message": f"Hello {current_user['username']}!",
         "user_id": current_user['user_id'],
@@ -37,6 +104,23 @@ def protected_route(current_user):
 
 @app.route('/users', methods=['GET'])
 def get_users():
+    """
+    Get all users
+    ---
+    tags:
+      - Users
+    responses:
+      200:
+        description: List of all users
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/User'
+      500:
+        description: Server error
+        schema:
+          $ref: '#/definitions/Error'
+    """
     db = SessionLocal()
     try:
         users = UserService.get_all_users(db)
@@ -54,6 +138,27 @@ def get_users():
 
 @app.route('/users', methods=['POST'])
 def create_user():
+    """
+    Create a new user (Register)
+    ---
+    tags:
+      - Users
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/UserCreate'
+    responses:
+      201:
+        description: User successfully created
+        schema:
+          $ref: '#/definitions/User'
+      400:
+        description: Validation error or user already exists
+        schema:
+          $ref: '#/definitions/Error'
+    """
     db = SessionLocal()
     try:
         user_data = request.json
@@ -68,6 +173,31 @@ def create_user():
 
 @app.route('/users/login', methods=['POST'])
 def login():
+    """
+    User login - returns JWT token
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/LoginRequest'
+    responses:
+      200:
+        description: Login successful, JWT token returned
+        schema:
+          $ref: '#/definitions/LoginResponse'
+      401:
+        description: Invalid credentials
+        schema:
+          $ref: '#/definitions/Error'
+      400:
+        description: Missing required fields
+        schema:
+          $ref: '#/definitions/Error'
+    """
     db = SessionLocal()
     try:
         login_data = request.json
@@ -101,9 +231,47 @@ def login():
 @app.route('/recipes', methods=['POST'])
 @token_required
 def create_recipe(current_user):
-    """Create a new recipe for the authenticated user"""
+    """
+    Create a new recipe (authentication required)
+    ---
+    tags:
+      - Recipes
+    security:
+      - Bearer: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/RecipeCreate'
+    responses:
+      201:
+        description: Recipe successfully created
+        schema:
+          $ref: '#/definitions/Recipe'
+      400:
+        description: Validation error or invalid data
+        schema:
+          $ref: '#/definitions/Error'
+      401:
+        description: Unauthorized - missing or invalid token
+        schema:
+          $ref: '#/definitions/Error'
+      404:
+        description: User not found
+        schema:
+          $ref: '#/definitions/Error'
+    """
     db = SessionLocal()
     try:
+        # Verify user still exists in database
+        user = UserService.get_user_by_id(db, current_user['user_id'])
+        if not user:
+            return jsonify({
+                "error": "User not found. Your account may have been deleted.",
+                "solution": "Please log in again or contact support."
+            }), 404
+        
         recipe_data = request.json
         from schemas.recipe_schemas import RecipeCreate
         
@@ -114,12 +282,36 @@ def create_recipe(current_user):
         recipe = RecipeService.create_recipe(db, recipe_create)
         return jsonify(recipe.model_dump()), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        error_msg = str(e)
+        # Handle foreign key constraint errors
+        if "foreign key constraint fails" in error_msg.lower():
+            return jsonify({
+                "error": "Invalid user account. Please log in again.",
+                "details": "Your user account may not exist in the database."
+            }), 400
+        return jsonify({"error": error_msg}), 400
     finally:
         db.close()
 
 @app.route('/recipes', methods=['GET'])
 def get_recipes():
+    """
+    Get all recipes
+    ---
+    tags:
+      - Recipes
+    responses:
+      200:
+        description: List of all recipes
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Recipe'
+      500:
+        description: Server error
+        schema:
+          $ref: '#/definitions/Error'
+    """
     db = SessionLocal()
     try:
         recipes = RecipeService.get_all_recipes(db)
@@ -131,6 +323,32 @@ def get_recipes():
 
 @app.route('/recipes/<int:recipe_id>', methods=['GET'])
 def get_recipe(recipe_id):
+    """
+    Get a specific recipe by ID
+    ---
+    tags:
+      - Recipes
+    parameters:
+      - name: recipe_id
+        in: path
+        type: integer
+        required: true
+        description: The recipe ID
+        example: 1
+    responses:
+      200:
+        description: Recipe details
+        schema:
+          $ref: '#/definitions/Recipe'
+      404:
+        description: Recipe not found
+        schema:
+          $ref: '#/definitions/Error'
+      500:
+        description: Server error
+        schema:
+          $ref: '#/definitions/Error'
+    """
     db = SessionLocal()
     try:
         recipe = RecipeService.get_recipe_by_id(db, recipe_id)
@@ -266,11 +484,15 @@ def search_recipes():
         db.close()
 
 @app.route('/comments', methods=['POST'])
-def create_comment():
+@token_required
+def create_comment(current_user):
+    """Create a comment - requires authentication"""
     db = SessionLocal()
     try:
         comment_data = request.json
         from schemas.comment_schemas import CommentCreate
+        # Override user_id with the authenticated user's ID
+        comment_data['user_id'] = current_user['user_id']
         comment_create = CommentCreate(**comment_data)
         comment = CommentService.create_comment(db, comment_create)
         return jsonify(comment.model_dump()), 201
@@ -305,9 +527,10 @@ def get_comment(comment_id):
 
 @app.route('/recipes/<int:recipe_id>/comments', methods=['GET'])
 def get_recipe_comments(recipe_id):
+    """Get all comments for a recipe with user information"""
     db = SessionLocal()
     try:
-        comments = CommentService.get_comments_by_recipe(db, recipe_id)
+        comments = CommentService.get_recipe_comments_with_users(db, recipe_id)
         return jsonify([comment.model_dump() for comment in comments])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -320,6 +543,60 @@ def get_user_comments(user_id):
     try:
         comments = CommentService.get_comments_by_user(db, user_id)
         return jsonify([comment.model_dump() for comment in comments])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
+@app.route('/comments/<int:comment_id>', methods=['PUT'])
+@token_required
+def update_comment(current_user, comment_id):
+    """Update a comment - only the owner can update"""
+    db = SessionLocal()
+    try:
+        # Check if comment exists
+        comment = CommentService.get_comment_by_id(db, comment_id)
+        if not comment:
+            return jsonify({"error": "Comment not found"}), 404
+        
+        # Check if user owns the comment
+        if comment.user_id != current_user['user_id']:
+            return jsonify({"error": "Forbidden: You can only edit your own comments"}), 403
+        
+        # Update the comment
+        comment_data = request.json
+        from schemas.comment_schemas import CommentUpdate
+        comment_update = CommentUpdate(**comment_data)
+        updated_comment = CommentService.update_comment(db, comment_id, comment_update)
+        
+        if updated_comment:
+            return jsonify(updated_comment.model_dump())
+        return jsonify({"error": "Failed to update comment"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        db.close()
+
+@app.route('/comments/<int:comment_id>', methods=['DELETE'])
+@token_required
+def delete_comment(current_user, comment_id):
+    """Delete a comment - only the owner can delete"""
+    db = SessionLocal()
+    try:
+        # Check if comment exists
+        comment = CommentService.get_comment_by_id(db, comment_id)
+        if not comment:
+            return jsonify({"error": "Comment not found"}), 404
+        
+        # Check if user owns the comment
+        if comment.user_id != current_user['user_id']:
+            return jsonify({"error": "Forbidden: You can only delete your own comments"}), 403
+        
+        # Delete the comment
+        success = CommentService.delete_comment(db, comment_id)
+        if success:
+            return '', 204
+        return jsonify({"error": "Failed to delete comment"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

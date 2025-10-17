@@ -2,19 +2,32 @@ import pytest
 import json
 from app import app
 from utils.jwt_utils import generate_token
+from database import SessionLocal
+from repositories.user_repository import UserRepository
 
 
 @pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+def test_user(client):
+    """Create a test user in the database"""
+    db = SessionLocal()
+    try:
+        user_data = {
+            'name': 'testuser',
+            'email': 'test@example.com', 
+            'password': 'password123'
+        }
+        user = UserRepository.create_user(db, user_data)
+        db.commit()
+        db.refresh(user)
+        return user
+    finally:
+        db.close()
 
 
 @pytest.fixture
-def auth_token():
+def auth_token(test_user):
     """Generate a valid JWT token for testing"""
-    return generate_token(user_id=1, username="testuser", email="test@example.com")
+    return generate_token(user_id=test_user.id, username=test_user.name, email=test_user.email)
 
 
 @pytest.fixture

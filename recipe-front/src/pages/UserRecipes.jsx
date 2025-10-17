@@ -89,6 +89,19 @@ const UserRecipes = () => {
       <Navbar />
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
+          {/* Go Back Button */}
+          <div className="mb-6">
+            <Link to="/">
+              <button
+                type="button"
+                className="inline-flex items-center text-orange-500 hover:text-orange-600 transition duration-200"
+              >
+                <Icon icon="mdi:arrow-left" className="mr-2" />
+                Back
+              </button>
+            </Link>
+          </div>
+
           {/* Header Section */}
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-3xl font-bold text-gray-800">My Recipes</h1>
@@ -193,27 +206,33 @@ const UserRecipes = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/recipe/${recipe.id}/edit`}
-                        className="flex flex-1 items-center justify-center rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
-                        title="Edit"
-                      >
-                        <Icon icon="mdi:pencil" className="h-5 w-5" />
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteClick(recipe)}
-                        className="flex flex-1 items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-white transition-colors hover:bg-red-600"
-                        title="Delete"
-                      >
-                        <Icon icon="mdi:delete" className="h-5 w-5" />
-                      </button>
-                      <Link
-                        to={`/recipe/${recipe.id}`}
-                        className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
-                      >
-                        View Recipe &rarr;
-                      </Link>
+                    <div className="p-6 flex flex-col h-full">
+                      <div className="flex items-start justify-between mb-2">
+                        {/* Left: Edit/Delete CTAs */}
+                        <div className="flex gap-2">
+                          <Link
+                            to={`/recipe/${recipe.id}/edit`}
+                            className="flex items-center justify-center rounded-full bg-blue-500 p-2 text-white transition-colors hover:bg-blue-600"
+                            title="Edit"
+                          >
+                            <Icon icon="mdi:pencil" className="h-5 w-5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteClick(recipe)}
+                            className="flex items-center justify-center rounded-full bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
+                            title="Delete"
+                          >
+                            <Icon icon="mdi:delete" className="h-5 w-5" />
+                          </button>
+                        </div>
+                        {/* Right: View Recipe */}
+                        <Link
+                          to={`/recipe/${recipe.id}`}
+                          className="text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
+                        >
+                          View Recipe &rarr;
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
