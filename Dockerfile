@@ -14,6 +14,9 @@ RUN pip install --upgrade pip && \
 # Install dev dependencies from pyproject.toml (optional)
 RUN pip install -e ".[dev]"
 
+# pre-commit
+RUN apt-get update && apt-get install -y git
+
 # Copy the rest of the app code
 COPY . .
 
