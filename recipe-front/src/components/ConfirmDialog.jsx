@@ -1,5 +1,4 @@
 import { Icon } from '@iconify/react';
-import PropTypes from 'prop-types';
 
 const ConfirmDialog = ({ 
   isOpen, 
@@ -63,17 +62,6 @@ const ConfirmDialog = ({
       </div>
     </div>
   );
-};
-
-ConfirmDialog.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onConfirm: PropTypes.func.isRequired,
-  title: PropTypes.string.isRequired,
-  message: PropTypes.string.isRequired,
-  confirmText: PropTypes.string,
-  cancelText: PropTypes.string,
-  confirmButtonClass: PropTypes.string
 };
 
 export default ConfirmDialog;
