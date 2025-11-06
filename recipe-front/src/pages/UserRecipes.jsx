@@ -89,12 +89,25 @@ const UserRecipes = () => {
       <Navbar />
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
+          {/* Go Back Button */}
+          <div className="mb-6">
+            <Link to="/">
+              <button
+                type="button"
+                className="inline-flex items-center text-orange-500 hover:text-orange-600 transition duration-200"
+              >
+                <Icon icon="mdi:arrow-left" className="mr-2" />
+                Back
+              </button>
+            </Link>
+          </div>
+
           {/* Header Section */}
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-3xl font-bold text-gray-800">My Recipes</h1>
             <Link
               to="/recipe/new"
-              className="flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-white transition-colors hover:bg-teal-600"
+              className="flex items-center justify-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-white transition-colors hover:bg-orange-600"
             >
               <Icon icon="mdi:plus-circle" className="h-5 w-5" />
               <span>Create New Recipe</span>
@@ -128,7 +141,7 @@ const UserRecipes = () => {
               </div>
               <button
                 type="submit"
-                className="rounded-lg bg-teal-500 px-6 py-2 text-white transition-colors hover:bg-teal-600"
+                className="rounded-lg bg-orange-500 px-6 py-2 text-white transition-colors hover:bg-orange-600"
               >
                 Search
               </button>
@@ -143,7 +156,7 @@ const UserRecipes = () => {
           {/* Loading State */}
           {userRecipesLoading && (
             <div className="flex justify-center py-12">
-              <Icon icon="mdi:loading" className="h-12 w-12 animate-spin text-teal-500" />
+              <Icon icon="mdi:loading" className="h-12 w-12 animate-spin text-orange-500" />
             </div>
           )}
 
@@ -170,48 +183,56 @@ const UserRecipes = () => {
                     <h2 className="mb-2 text-xl font-bold text-gray-800">{recipe.title}</h2>
                     <div className="mb-4 space-y-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
+                        <span className="font-semibold text-teal-500">@{recipe.user_name || 'You'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <Icon icon="mdi:food" className="h-4 w-4 text-teal-500" />
                         <span className="capitalize">{recipe.dish_type || 'Not specified'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Icon icon="mdi:clock-outline" className="h-4 w-4 text-teal-500" />
+                        <Icon icon="mdi:clock-outline" className="h-4 w-4 text-orange-500" />
                         <span>{recipe.preparation_time || 'N/A'} mins</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Icon icon="mdi:account-group" className="h-4 w-4 text-teal-500" />
+                        <Icon icon="mdi:account-group" className="h-4 w-4 text-orange-500" />
                         <span>{recipe.servings || 'N/A'} servings</span>
                       </div>
                       {recipe.origin && (
                         <div className="flex items-center gap-2">
-                          <Icon icon="mdi:earth" className="h-4 w-4 text-teal-500" />
+                          <Icon icon="mdi:earth" className="h-4 w-4 text-orange-500" />
                           <span>{recipe.origin}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/recipe/${recipe.id}/edit`}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-600"
-                      >
-                        <Icon icon="mdi:pencil" className="h-4 w-4" />
-                        <span>Edit</span>
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteClick(recipe)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white transition-colors hover:bg-red-600"
-                      >
-                        <Icon icon="mdi:delete" className="h-4 w-4" />
-                        <span>Delete</span>
-                      </button>
-                      <Link
-                        to={`/recipe/${recipe.id}`}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300"
-                      >
-                        <Icon icon="mdi:eye" className="h-4 w-4" />
-                        <span>View</span>
-                      </Link>
+                    <div className="p-6 flex flex-col h-full">
+                      <div className="flex items-start justify-between mb-2">
+                        {/* Left: Edit/Delete CTAs */}
+                        <div className="flex gap-2">
+                          <Link
+                            to={`/recipe/${recipe.id}/edit`}
+                            className="flex items-center justify-center rounded-full bg-blue-500 p-2 text-white transition-colors hover:bg-blue-600"
+                            title="Edit"
+                          >
+                            <Icon icon="mdi:pencil" className="h-5 w-5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteClick(recipe)}
+                            className="flex items-center justify-center rounded-full bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
+                            title="Delete"
+                          >
+                            <Icon icon="mdi:delete" className="h-5 w-5" />
+                          </button>
+                        </div>
+                        {/* Right: View Recipe */}
+                        <Link
+                          to={`/recipe/${recipe.id}`}
+                          className="text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
+                        >
+                          View Recipe &rarr;
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -234,7 +255,7 @@ const UserRecipes = () => {
               {!userSearchQuery && (
                 <Link
                   to="/recipe/new"
-                  className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-white transition-colors hover:bg-teal-600"
+                  className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-white transition-colors hover:bg-orange-600"
                 >
                   <Icon icon="mdi:plus-circle" className="h-5 w-5" />
                   <span>Create Your First Recipe</span>

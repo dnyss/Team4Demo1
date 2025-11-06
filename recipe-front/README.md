@@ -22,15 +22,21 @@ If you are developing a production application, we recommend using TypeScript wi
 - Zustand
 - React Router DOM
 
-## Run instructions (Dev ATM)
+## API Integration
+- **Backend API**: http://localhost:5000
+- **Swagger Documentation**: http://localhost:5000/apidocs
 
-### 1 Build Docker Image
+## Run instructions (Dev)
+
+### Using Docker Compose (Recommended)
 ```bash
-docker build -t recipe-front .
+# From project root
+./init.sh
+# Frontend will be available at http://localhost:5173
 ```
 
-### 2 Run the container
+### Standalone Container
 ```bash
+docker build -t recipe-front .
 docker run -p 5173:5173 recipe-front
-
 ```

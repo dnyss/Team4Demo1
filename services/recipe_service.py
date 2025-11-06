@@ -12,28 +12,55 @@ class RecipeService:
     def get_recipe_by_id(db: Session, recipe_id: int) -> Optional[RecipeResponse]:
         recipe = RecipeRepository.get_recipe_by_id(db, recipe_id)
         if recipe:
-            return RecipeResponse.from_orm(recipe)
+            response = RecipeResponse.from_orm(recipe)
+            if recipe.user:
+                response.user_name = recipe.user.name
+            return response
         return None
 
     @staticmethod
     def get_recipes_by_user(db: Session, user_id: int) -> List[RecipeResponse]:
         recipes = RecipeRepository.get_recipes_by_user(db, user_id)
-        return [RecipeResponse.from_orm(recipe) for recipe in recipes]
+        result = []
+        for recipe in recipes:
+            response = RecipeResponse.from_orm(recipe)
+            if recipe.user:
+                response.user_name = recipe.user.name
+            result.append(response)
+        return result
 
     @staticmethod
     def get_recipes_by_dish_type(db: Session, dish_type: str) -> List[RecipeResponse]:
         recipes = RecipeRepository.get_recipes_by_dish_type(db, dish_type)
-        return [RecipeResponse.from_orm(recipe) for recipe in recipes]
+        result = []
+        for recipe in recipes:
+            response = RecipeResponse.from_orm(recipe)
+            if recipe.user:
+                response.user_name = recipe.user.name
+            result.append(response)
+        return result
 
     @staticmethod
     def search_recipes(db: Session, title: str) -> List[RecipeResponse]:
         recipes = RecipeRepository.search_recipes_by_title(db, title)
-        return [RecipeResponse.from_orm(recipe) for recipe in recipes]
+        result = []
+        for recipe in recipes:
+            response = RecipeResponse.from_orm(recipe)
+            if recipe.user:
+                response.user_name = recipe.user.name
+            result.append(response)
+        return result
 
     @staticmethod
     def get_all_recipes(db: Session, skip: int = 0, limit: int = 100) -> List[RecipeResponse]:
         recipes = RecipeRepository.get_all_recipes(db, skip, limit)
-        return [RecipeResponse.from_orm(recipe) for recipe in recipes]
+        result = []
+        for recipe in recipes:
+            response = RecipeResponse.from_orm(recipe)
+            if recipe.user:
+                response.user_name = recipe.user.name
+            result.append(response)
+        return result
 
     @staticmethod
     def create_recipe(db: Session, recipe_data: RecipeCreate) -> RecipeResponse:
@@ -48,7 +75,10 @@ class RecipeService:
 
         recipe_dict = recipe_data.model_dump()
         db_recipe = RecipeRepository.create_recipe(db, recipe_dict)
-        return RecipeResponse.from_orm(db_recipe)
+        response = RecipeResponse.from_orm(db_recipe)
+        if db_recipe.user:
+            response.user_name = db_recipe.user.name
+        return response
 
     @staticmethod
     def update_recipe(db: Session, recipe_id: int, update_data: RecipeUpdate) -> Optional[RecipeResponse]:
@@ -59,7 +89,10 @@ class RecipeService:
         update_dict = update_data.model_dump(exclude_unset=True)
         updated_recipe = RecipeRepository.update_recipe(db, recipe_id, update_dict)
         if updated_recipe:
-            return RecipeResponse.from_orm(updated_recipe)
+            response = RecipeResponse.from_orm(updated_recipe)
+            if updated_recipe.user:
+                response.user_name = updated_recipe.user.name
+            return response
         return None
 
     @staticmethod

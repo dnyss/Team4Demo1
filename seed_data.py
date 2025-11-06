@@ -38,6 +38,8 @@ def seed_database():
             {"name": "Chef Maria", "email": "maria@recipes.com", "password": "chef123"},
             {"name": "John Baker", "email": "john@recipes.com", "password": "baker123"},
             {"name": "Sarah Cook", "email": "sarah@recipes.com", "password": "cook123"},
+            {"name": "David Chen", "email": "david@recipes.com", "password": "cook123"},
+            {"name": "Emma Wilson", "email": "emma@recipes.com", "password": "cook123"},
         ]
         
         users = []
