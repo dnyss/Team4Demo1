@@ -46,8 +46,9 @@ const Navbar = () => {
   return (
     <nav className="bg-white shadow-md py-4 px-6">
       <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-orange-500">
-          TasteCraft
+        <Link to="/" className="flex items-center space-x-2 text-2xl font-bold text-orange-500">
+          <Icon icon="material-symbols-light:chef-hat-rounded" width="24" height="24" className="text-orange-500" />
+          <span>TasteCraft</span>
         </Link>
         
         {isAuthenticated ? (

@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CommentBox from '../components/CommentBox';
 import useRecipesStore from '../store/recipesStore';
 
 const Recipe = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { currentRecipe, currentRecipeLoading, currentRecipeError, fetchRecipeById, clearCurrentRecipe } = useRecipesStore();
 
   useEffect(() => {
@@ -37,13 +39,14 @@ const Recipe = () => {
           <div className="max-w-4xl mx-auto">
             {/* Go Back Button */}
             <div className="mb-6">
-              <Link
-                to="/"
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
                 className="inline-flex items-center text-orange-500 hover:text-orange-600 transition duration-200"
               >
                 <Icon icon="mdi:arrow-left" className="mr-2" />
                 Back to Recipes
-              </Link>
+              </button>
             </div>
 
             {/* Loading State */}
@@ -80,10 +83,18 @@ const Recipe = () => {
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-8">
                   <h1 className="text-4xl font-bold mb-4">{currentRecipe.title}</h1>
                   
+                  {/* Author Info */}
+                  {currentRecipe.user_name && (
+                    <div className="mb-4 flex items-center">
+                      <Icon icon="mdi:account-circle" className="mr-2 text-2xl" />
+                      <span className="text-lg">by <span className="font-semibold">{currentRecipe.user_name}</span></span>
+                    </div>
+                  )}
+                  
                   {/* Dish Type Badge */}
                   {currentRecipe.dish_type && (
                     <div className="mb-4">
-                      <span className="inline-block bg-white bg-opacity-20 text-white text-sm px-4 py-1 rounded-full">
+                      <span className="inline-block bg-white bg-opacity-20 text-orange-500 text-sm px-4 py-1 rounded-full">
                         {currentRecipe.dish_type}
                       </span>
                     </div>
@@ -161,6 +172,11 @@ const Recipe = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Comments Section */}
+            {currentRecipe && !currentRecipeLoading && !currentRecipeError && (
+              <CommentBox recipeId={currentRecipe.id} />
             )}
           </div>
         </div>

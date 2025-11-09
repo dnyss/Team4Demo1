@@ -137,7 +137,17 @@ const useRecipesStore = create((set, get) => ({
       return response.data;
     } catch (error) {
       console.error('Error creating recipe:', error);
-      const errorMessage = error.response?.data?.error || 'Failed to create recipe';
+      let errorMessage = 'Failed to create recipe';
+      
+      // Handle specific error cases
+      if (error.response?.status === 404) {
+        errorMessage = 'Your user account was not found. Please log in again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.details) {
+        errorMessage = error.response.data.details;
+      }
+      
       set({ 
         userRecipesError: errorMessage, 
         userRecipesLoading: false 

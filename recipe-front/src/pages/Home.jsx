@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import useRecipesStore from '../store/recipesStore';
+import { Icon } from '@iconify/react';
 
 const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -101,28 +102,45 @@ const Home = () => {
         {/* Featured/Search Results Section */}
         <section>
           <h3 className="text-2xl font-bold text-gray-800 mb-6">Featured Recipes</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {recipes && recipes.length > 0 ? (
               recipes.map((recipe) => (
                 <div
                   key={recipe.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200"
+                  className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <div className="h-48 bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-500">Recipe Image</span>
-                  </div>
                   <div className="p-6">
-                    <h4 className="text-xl font-semibold text-gray-800 mb-2">
-                      {recipe.title}
-                    </h4>
-                    <p className="text-gray-600">
-                      {recipe.description}
-                    </p>
+                    <h2 className="mb-2 text-xl font-bold text-gray-800">{recipe.title}</h2>
+                    <div className="mb-4 space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-teal-500">
+                          @{recipe.user_name || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:food" className="h-4 w-4 text-teal-500" />
+                        <span className="capitalize">{recipe.dish_type || 'Not specified'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:clock-outline" className="h-4 w-4 text-orange-500" />
+                        <span>{recipe.preparation_time || 'N/A'} mins</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:account-group" className="h-4 w-4 text-orange-500" />
+                        <span>{recipe.servings || 'N/A'} servings</span>
+                      </div>
+                      {recipe.origin && (
+                        <div className="flex items-center gap-2">
+                          <Icon icon="mdi:earth" className="h-4 w-4 text-orange-500" />
+                          <span>{recipe.origin}</span>
+                        </div>
+                      )}
+                    </div>
                     <Link 
                       to={`/recipe/${recipe.id}`}
                       className="mt-4 inline-block text-orange-500 font-semibold hover:text-orange-600 transition duration-200"
                     >
-                      View Recipe →
+                      View Recipe &rarr;
                     </Link>
                   </div>
                 </div>

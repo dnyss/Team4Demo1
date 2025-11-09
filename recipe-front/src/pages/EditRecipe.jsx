@@ -148,7 +148,7 @@ const EditRecipe = () => {
         dish_type: formData.dish_type,
         ingredients: formData.ingredients.trim(),
         instructions: formData.instructions.trim(),
-        preparation_time: parseInt(formData.preparation_time),
+        preparation_time: formData.preparation_time.trim(),
         origin: formData.origin.trim() || null,
         servings: formData.servings ? parseInt(formData.servings) : null
       };
@@ -379,7 +379,7 @@ const EditRecipe = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-white transition-colors hover:bg-teal-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-white transition-colors hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>

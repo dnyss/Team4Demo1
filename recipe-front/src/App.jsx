@@ -19,7 +19,7 @@ function App() {
       <Routes>
         {/* Public routes - accessible to everyone */}
         <Route path="/" element={<Home />} />
-        <Route path="/recipe" element={<Recipe />} />
+        <Route path="/recipe" element={<Recipe />} /> {/* presumably unused */}
         <Route path="/recipe/:id" element={<Recipe />} />
         
         {/* Guest-only routes - redirect to home if authenticated */}

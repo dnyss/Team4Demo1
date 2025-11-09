@@ -2,6 +2,26 @@ import pytest
 import json
 
 
+def create_user_and_get_token(client, email="test@example.com", name="testuser", password="testpassword123"):
+    """Helper function to create a user and get authentication token"""
+    user_data = {
+        "name": name,
+        "email": email,
+        "password": password
+    }
+    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    
+    # Login to get token
+    login_response = client.post('/users/login',
+                                 data=json.dumps({
+                                     "email": email,
+                                     "password": password
+                                 }),
+                                 content_type='application/json')
+    login_data = json.loads(login_response.data)
+    return login_data['token']
+
+
 def test_get_all_recipes_empty(client):
     """Test GET /recipes returns empty array when no recipes exist"""
     response = client.get('/recipes')
@@ -14,13 +34,8 @@ def test_get_all_recipes_empty(client):
 
 def test_get_all_recipes_with_data(client):
     """Test GET /recipes returns all recipes"""
-    # First, create a user
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     # Create a recipe
     recipe_data = {
@@ -30,10 +45,12 @@ def test_get_all_recipes_with_data(client):
         "instructions": "Step 1, Step 2",
         "preparation_time": "30 minutes",
         "origin": "Test Origin",
-        "servings": 4,
-        "user_id": 1
+        "servings": 4
     }
-    client.post('/recipes', data=json.dumps(recipe_data), content_type='application/json')
+    client.post('/recipes', 
+               data=json.dumps(recipe_data), 
+               content_type='application/json',
+               headers={'Authorization': f'Bearer {token}'})
     
     # Get all recipes
     response = client.get('/recipes')
@@ -46,27 +63,27 @@ def test_get_all_recipes_with_data(client):
     assert data[0]['dish_type'] == 'Main Course'
     assert 'id' in data[0]
     assert 'creation_date' in data[0]
+    assert 'user_name' in data[0]
+    assert data[0]['user_name'] == 'testuser'
 
 
 def test_get_all_recipes_multiple(client):
     """Test GET /recipes returns multiple recipes"""
-    # Create user
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     # Create multiple recipes
     recipes = [
-        {"title": "Recipe One", "dish_type": "Appetizer", "ingredients": "ing1", "instructions": "inst1", "user_id": 1},
-        {"title": "Recipe Two", "dish_type": "Main", "ingredients": "ing2", "instructions": "inst2", "user_id": 1},
-        {"title": "Recipe Three", "dish_type": "Dessert", "ingredients": "ing3", "instructions": "inst3", "user_id": 1}
+        {"title": "Recipe One", "dish_type": "Appetizer", "ingredients": "ing1", "instructions": "inst1"},
+        {"title": "Recipe Two", "dish_type": "Main", "ingredients": "ing2", "instructions": "inst2"},
+        {"title": "Recipe Three", "dish_type": "Dessert", "ingredients": "ing3", "instructions": "inst3"}
     ]
     
     for recipe in recipes:
-        client.post('/recipes', data=json.dumps(recipe), content_type='application/json')
+        client.post('/recipes', 
+                   data=json.dumps(recipe), 
+                   content_type='application/json',
+                   headers={'Authorization': f'Bearer {token}'})
     
     # Get all recipes
     response = client.get('/recipes')
@@ -102,22 +119,19 @@ def test_search_recipes_empty_query(client):
 
 def test_search_recipes_no_results(client):
     """Test GET /recipes/search returns empty array when no matches found"""
-    # Create user and recipe
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     recipe_data = {
         "title": "Chocolate Cake",
         "dish_type": "Dessert",
         "ingredients": "chocolate, flour",
-        "instructions": "Mix and bake",
-        "user_id": 1
+        "instructions": "Mix and bake"
     }
-    client.post('/recipes', data=json.dumps(recipe_data), content_type='application/json')
+    client.post('/recipes', 
+               data=json.dumps(recipe_data), 
+               content_type='application/json',
+               headers={'Authorization': f'Bearer {token}'})
     
     # Search for something that doesn't exist
     response = client.get('/recipes/search?q=pizza')
@@ -130,22 +144,19 @@ def test_search_recipes_no_results(client):
 
 def test_search_recipes_exact_match(client):
     """Test GET /recipes/search finds exact title match"""
-    # Create user and recipe
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     recipe_data = {
         "title": "Chocolate Chip Cookies",
         "dish_type": "Dessert",
         "ingredients": "chocolate, flour",
-        "instructions": "Mix and bake",
-        "user_id": 1
+        "instructions": "Mix and bake"
     }
-    client.post('/recipes', data=json.dumps(recipe_data), content_type='application/json')
+    client.post('/recipes', 
+               data=json.dumps(recipe_data), 
+               content_type='application/json',
+               headers={'Authorization': f'Bearer {token}'})
     
     # Search for exact title
     response = client.get('/recipes/search?q=Chocolate Chip Cookies')
@@ -158,22 +169,20 @@ def test_search_recipes_exact_match(client):
 
 def test_search_recipes_partial_match(client):
     """Test GET /recipes/search finds partial matches"""
-    # Create user and recipes
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     recipes = [
-        {"title": "Chocolate Cake", "dish_type": "Dessert", "ingredients": "ing", "instructions": "inst", "user_id": 1},
-        {"title": "Chocolate Cookies", "dish_type": "Dessert", "ingredients": "ing", "instructions": "inst", "user_id": 1},
-        {"title": "Vanilla Cake", "dish_type": "Dessert", "ingredients": "ing", "instructions": "inst", "user_id": 1}
+        {"title": "Chocolate Cake", "dish_type": "Dessert", "ingredients": "ing", "instructions": "inst"},
+        {"title": "Chocolate Cookies", "dish_type": "Dessert", "ingredients": "ing", "instructions": "inst"},
+        {"title": "Vanilla Cake", "dish_type": "Dessert", "ingredients": "ing", "instructions": "inst"}
     ]
     
     for recipe in recipes:
-        client.post('/recipes', data=json.dumps(recipe), content_type='application/json')
+        client.post('/recipes', 
+                   data=json.dumps(recipe), 
+                   content_type='application/json',
+                   headers={'Authorization': f'Bearer {token}'})
     
     # Search for "Chocolate" - should find 2 recipes
     response = client.get('/recipes/search?q=Chocolate')
@@ -189,22 +198,19 @@ def test_search_recipes_partial_match(client):
 
 def test_search_recipes_case_insensitive(client):
     """Test GET /recipes/search is case-insensitive"""
-    # Create user and recipe
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     recipe_data = {
         "title": "Spaghetti Carbonara",
         "dish_type": "Main Course",
         "ingredients": "pasta, eggs",
-        "instructions": "Cook and mix",
-        "user_id": 1
+        "instructions": "Cook and mix"
     }
-    client.post('/recipes', data=json.dumps(recipe_data), content_type='application/json')
+    client.post('/recipes', 
+               data=json.dumps(recipe_data), 
+               content_type='application/json',
+               headers={'Authorization': f'Bearer {token}'})
     
     # Search with different cases
     test_queries = ['spaghetti', 'SPAGHETTI', 'SpAgHeTTi', 'carbonara', 'CARBONARA']
@@ -219,22 +225,19 @@ def test_search_recipes_case_insensitive(client):
 
 def test_search_recipes_with_spaces(client):
     """Test GET /recipes/search handles queries with spaces"""
-    # Create user and recipe
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     recipe_data = {
         "title": "Chicken Stir Fry",
         "dish_type": "Main Course",
         "ingredients": "chicken, vegetables",
-        "instructions": "Cook and stir",
-        "user_id": 1
+        "instructions": "Cook and stir"
     }
-    client.post('/recipes', data=json.dumps(recipe_data), content_type='application/json')
+    client.post('/recipes', 
+               data=json.dumps(recipe_data), 
+               content_type='application/json',
+               headers={'Authorization': f'Bearer {token}'})
     
     # Search with spaces in query
     response = client.get('/recipes/search?q=Chicken Stir')
@@ -247,23 +250,21 @@ def test_search_recipes_with_spaces(client):
 
 def test_search_recipes_multiple_results(client):
     """Test GET /recipes/search returns all matching results"""
-    # Create user and multiple recipes
-    user_data = {
-        "name": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123"
-    }
-    client.post('/users', data=json.dumps(user_data), content_type='application/json')
+    # Create user and get token
+    token = create_user_and_get_token(client)
     
     recipes = [
-        {"title": "Thai Soup", "dish_type": "Soup", "ingredients": "ing", "instructions": "inst", "user_id": 1},
-        {"title": "Tomato Soup", "dish_type": "Soup", "ingredients": "ing", "instructions": "inst", "user_id": 1},
-        {"title": "Chicken Soup", "dish_type": "Soup", "ingredients": "ing", "instructions": "inst", "user_id": 1},
-        {"title": "Thai Curry", "dish_type": "Main", "ingredients": "ing", "instructions": "inst", "user_id": 1}
+        {"title": "Thai Soup", "dish_type": "Soup", "ingredients": "ing", "instructions": "inst"},
+        {"title": "Tomato Soup", "dish_type": "Soup", "ingredients": "ing", "instructions": "inst"},
+        {"title": "Chicken Soup", "dish_type": "Soup", "ingredients": "ing", "instructions": "inst"},
+        {"title": "Thai Curry", "dish_type": "Main", "ingredients": "ing", "instructions": "inst"}
     ]
     
     for recipe in recipes:
-        client.post('/recipes', data=json.dumps(recipe), content_type='application/json')
+        client.post('/recipes', 
+                   data=json.dumps(recipe), 
+                   content_type='application/json',
+                   headers={'Authorization': f'Bearer {token}'})
     
     # Search for "Soup" - should find 3 recipes
     response = client.get('/recipes/search?q=Soup')
