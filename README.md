@@ -16,6 +16,8 @@ cd Team4Demo1
 ```
 
 ### 2 Configure environment variables
+
+#### Backend Configuration
 Create a `.env` file from the template:
 ```bash
 cp .env.example .env
@@ -37,7 +39,21 @@ JWT_SECRET_KEY=your_jwt_secret_key_here_change_in_production
 FLASK_ENV=development
 ```
 
-**Important**: Never commit the `.env` file to version control. It's already included in `.gitignore`.
+#### Frontend Configuration
+Create a `.env` file in the `recipe-front` directory:
+```bash
+cd recipe-front
+cp .env.example .env
+cd ..
+```
+
+Edit `recipe-front/.env` to configure the API URL:
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+**Important**: Never commit `.env` files to version control. They're already included in `.gitignore`.
 
 ### 3 Give execution permissions to init script
 ```bash
