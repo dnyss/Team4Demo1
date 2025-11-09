@@ -3,38 +3,36 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import apiClient from '../api/apiClient';
 import useAuthStore from '../store/AuthStore';
+import useFormValidation from '../hooks/useFormValidation';
+import { loginSchema } from '../utils/validators';
 
 const Login = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
+  const [loading, setLoading] = useState(false);
   
-  const [formData, setFormData] = useState({
+  const {
+    values: formData,
+    errors,
+    handleChange,
+    handleBlur,
+    validate,
+    setFieldError
+  } = useFormValidation(loginSchema, {
     email: '',
     password: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Clear previous errors
-    setErrors({});
+    // Validate form
+    const isValid = await validate();
+    if (!isValid) {
+      toast.error('Por favor corrige los errores en el formulario');
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -65,29 +63,27 @@ const Login = () => {
         // Set field-specific errors if possible
         if (error.response.status === 401) {
           // Invalid credentials
-          setErrors({ 
-            general: 'Invalid email or password. Please try again.' 
-          });
+          setFieldError('general', 'Invalid email or password. Please try again.');
           toast.error('Invalid email or password');
         } else if (errorMessage.includes('email')) {
-          setErrors({ email: errorMessage });
+          setFieldError('email', errorMessage);
           toast.error(errorMessage);
         } else if (errorMessage.includes('password')) {
-          setErrors({ password: errorMessage });
+          setFieldError('password', errorMessage);
           toast.error(errorMessage);
         } else {
-          setErrors({ general: errorMessage });
+          setFieldError('general', errorMessage);
           toast.error(errorMessage);
         }
       } else if (error.request) {
         // Request made but no response received
         const networkError = 'Network error. Please check your connection and try again.';
-        setErrors({ general: networkError });
+        setFieldError('general', networkError);
         toast.error(networkError);
       } else {
         // Something else happened
         const unknownError = 'An unexpected error occurred. Please try again.';
-        setErrors({ general: unknownError });
+        setFieldError('general', unknownError);
         toast.error(unknownError);
       }
     } finally {
@@ -124,15 +120,19 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
                     errors.email ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter your email"
-                  required
                   disabled={loading}
+                  aria-invalid={errors.email ? 'true' : 'false'}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                 />
                 {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.email}
+                  </p>
                 )}
               </div>
 
@@ -147,15 +147,19 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
                     errors.password ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter your password"
-                  required
                   disabled={loading}
+                  aria-invalid={errors.password ? 'true' : 'false'}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                 />
                 {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                  <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.password}
+                  </p>
                 )}
               </div>
 

@@ -2,44 +2,35 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import useFormValidation from '../hooks/useFormValidation';
+import { registerSchema } from '../utils/validators';
 
 const Register = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const {
+    values: formData,
+    errors,
+    handleChange,
+    handleBlur,
+    validate,
+    setFieldError
+  } = useFormValidation(registerSchema, {
     username: '',
     email: '',
     password: '',
     repeatPassword: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Clear previous errors
-    setErrors({});
-    
-    // Client-side validation
-    if (formData.password !== formData.repeatPassword) {
-      setErrors({ repeatPassword: 'Passwords do not match!' });
-      toast.error('Passwords do not match!');
+    // Validate form
+    const isValid = await validate();
+    if (!isValid) {
+      toast.error('Por favor corrige los errores en el formulario');
       return;
     }
     
@@ -66,26 +57,26 @@ const Register = () => {
         
         // Parse error message to set field-specific errors
         if (errorMessage.includes('email')) {
-          setErrors({ email: errorMessage });
+          setFieldError('email', errorMessage);
         } else if (errorMessage.includes('username') || errorMessage.includes('name')) {
-          setErrors({ username: errorMessage });
+          setFieldError('username', errorMessage);
         } else if (errorMessage.includes('password')) {
-          setErrors({ password: errorMessage });
+          setFieldError('password', errorMessage);
         } else {
           // General error
-          setErrors({ general: errorMessage });
+          setFieldError('general', errorMessage);
         }
         
         toast.error(errorMessage);
       } else if (error.request) {
         // Request made but no response received
         const networkError = 'Network error. Please check your connection and try again.';
-        setErrors({ general: networkError });
+        setFieldError('general', networkError);
         toast.error(networkError);
       } else {
         // Something else happened
         const unknownError = 'An unexpected error occurred. Please try again.';
-        setErrors({ general: unknownError });
+        setFieldError('general', unknownError);
         toast.error(unknownError);
       }
     } finally {
@@ -122,15 +113,19 @@ const Register = () => {
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
                     errors.username ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter your username"
-                  required
                   disabled={loading}
+                  aria-invalid={errors.username ? 'true' : 'false'}
+                  aria-describedby={errors.username ? 'username-error' : undefined}
                 />
                 {errors.username && (
-                  <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                  <p id="username-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.username}
+                  </p>
                 )}
               </div>
 
@@ -145,15 +140,19 @@ const Register = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
                     errors.email ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter your email"
-                  required
                   disabled={loading}
+                  aria-invalid={errors.email ? 'true' : 'false'}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                 />
                 {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.email}
+                  </p>
                 )}
               </div>
 
@@ -168,15 +167,19 @@ const Register = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
                     errors.password ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter your password"
-                  required
                   disabled={loading}
+                  aria-invalid={errors.password ? 'true' : 'false'}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                 />
                 {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                  <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.password}
+                  </p>
                 )}
               </div>
 
@@ -191,15 +194,19 @@ const Register = () => {
                   name="repeatPassword"
                   value={formData.repeatPassword}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
                     errors.repeatPassword ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Repeat your password"
-                  required
                   disabled={loading}
+                  aria-invalid={errors.repeatPassword ? 'true' : 'false'}
+                  aria-describedby={errors.repeatPassword ? 'repeatPassword-error' : undefined}
                 />
                 {errors.repeatPassword && (
-                  <p className="mt-1 text-sm text-red-600">{errors.repeatPassword}</p>
+                  <p id="repeatPassword-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.repeatPassword}
+                  </p>
                 )}
               </div>
 
