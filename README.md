@@ -133,6 +133,84 @@ The production setup includes:
 - Gunicorn for serving the Flask API
 - Resource limits (CPU and memory)
 
+## Monitoring and Observability
+
+The project includes a comprehensive monitoring stack for production-ready observability.
+
+### Quick Start Monitoring
+
+```bash
+# Start monitoring stack only
+make monitoring-up
+
+# Start app + monitoring
+make full-up
+```
+
+Access monitoring services:
+- **Grafana Dashboard**: http://localhost:3000 (admin/admin)
+- **Prometheus Metrics**: http://localhost:9090
+- **Alertmanager**: http://localhost:9093
+- **API Metrics Endpoint**: http://localhost:5000/metrics
+
+### Monitoring Features
+
+#### Metrics Collection
+- **Request Rate**: Track HTTP requests per second
+- **Error Rate**: Monitor 5xx errors
+- **Response Time**: p50, p95, p99 latency percentiles
+- **Custom Metrics**: Recipe operations, comment operations, user operations
+- **System Metrics**: CPU, memory, disk usage
+
+#### Health Checks
+```bash
+# Basic health check
+curl http://localhost:5000/health
+
+# Liveness probe (is app running?)
+curl http://localhost:5000/healthz/live
+
+# Readiness probe (is app ready to serve traffic?)
+curl http://localhost:5000/healthz/ready
+```
+
+#### Structured Logging
+- JSON-formatted logs with correlation IDs
+- Centralized log aggregation with Loki
+- Log visualization in Grafana
+- Request/response logging with full context
+
+#### Alerting
+Alerts are automatically sent to Discord for:
+- Service down (critical)
+- Database connection failures (critical)
+- High error rate >5% (warning)
+- High response time >2s p95 (warning)
+- Unusual activity patterns (info)
+
+### Monitoring Commands
+
+| Command | Description |
+|---------|-------------|
+| `make monitoring-up` | Start monitoring stack |
+| `make monitoring-down` | Stop monitoring stack |
+| `make monitoring-clean` | Remove monitoring volumes |
+| `make monitoring-logs` | View all monitoring logs |
+| `make monitoring-status` | Show monitoring service status |
+| `make full-up` | Start app + monitoring |
+| `make full-down` | Stop app + monitoring |
+
+### Pre-configured Dashboards
+
+The Grafana instance includes a pre-configured "Recipe Book - Application Metrics" dashboard with:
+- Request rate and error rate
+- Response time percentiles
+- Recipe and comment operation metrics
+- Service health status
+- Live application logs
+
+**For detailed monitoring documentation, see [docs/MONITORING_GUIDE.md](docs/MONITORING_GUIDE.md)**
+
 ## API Documentation
 - **Swagger UI**: http://localhost:5000/apidocs
 - **OpenAPI Spec**: http://localhost:5000/apispec_1.json

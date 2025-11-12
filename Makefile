@@ -255,6 +255,72 @@ update-requirements: ## Regenerate requirements.txt from pyproject.toml
 	@pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt extra-requirements.in pyproject.toml
 	@echo "$(BLUE)requirements.txt updated.$(RESET)"
 
+# Monitoring Commands
+
+monitoring-up: ## Start monitoring stack (Prometheus, Grafana, Alertmanager, Loki)
+	@echo "$(BLUE)Starting monitoring stack...$(RESET)"
+	@docker compose -f docker-compose.monitoring.yaml up -d
+	@echo "$(BLUE)Monitoring stack started.$(RESET)"
+	@echo "  Prometheus: http://localhost:9090"
+	@echo "  Grafana: http://localhost:3000 (admin/admin)"
+	@echo "  Alertmanager: http://localhost:9093"
+
+monitoring-down: ## Stop monitoring stack
+	@echo "$(BLUE)Stopping monitoring stack...$(RESET)"
+	@docker compose -f docker-compose.monitoring.yaml down
+	@echo "$(BLUE)Monitoring stack stopped.$(RESET)"
+
+monitoring-clean: ## Remove monitoring containers and volumes
+	@echo "$(BLUE)Cleaning up monitoring stack...$(RESET)"
+	@docker compose -f docker-compose.monitoring.yaml down -v
+	@echo "$(BLUE)Monitoring cleanup complete.$(RESET)"
+
+monitoring-logs: ## Show logs from monitoring stack
+	@docker compose -f docker-compose.monitoring.yaml logs -f
+
+monitoring-logs-prometheus: ## Show Prometheus logs
+	@docker compose -f docker-compose.monitoring.yaml logs -f prometheus
+
+monitoring-logs-grafana: ## Show Grafana logs
+	@docker compose -f docker-compose.monitoring.yaml logs -f grafana
+
+monitoring-logs-alertmanager: ## Show Alertmanager logs
+	@docker compose -f docker-compose.monitoring.yaml logs -f alertmanager
+
+monitoring-status: ## Show status of monitoring services
+	@docker compose -f docker-compose.monitoring.yaml ps
+
+monitoring-restart: ## Restart monitoring stack
+	@echo "$(BLUE)Restarting monitoring stack...$(RESET)"
+	@docker compose -f docker-compose.monitoring.yaml restart
+	@echo "$(BLUE)Monitoring stack restarted.$(RESET)"
+
+# Full Stack Commands
+
+full-up: ## Start development environment + monitoring stack
+	@echo "$(BLUE)Starting full stack (dev + monitoring)...$(RESET)"
+	@$(MAKE) up
+	@$(MAKE) monitoring-up
+	@echo "$(BLUE)Full stack started.$(RESET)"
+	@echo "  Frontend: http://localhost:5173"
+	@echo "  API: http://localhost:5000"
+	@echo "  API Docs: http://localhost:5000/apidocs"
+	@echo "  Prometheus: http://localhost:9090"
+	@echo "  Grafana: http://localhost:3000 (admin/admin)"
+	@echo "  Alertmanager: http://localhost:9093"
+
+full-down: ## Stop development environment + monitoring stack
+	@echo "$(BLUE)Stopping full stack...$(RESET)"
+	@$(MAKE) down
+	@$(MAKE) monitoring-down
+	@echo "$(BLUE)Full stack stopped.$(RESET)"
+
+full-clean: ## Clean development environment + monitoring stack
+	@echo "$(BLUE)Cleaning full stack...$(RESET)"
+	@$(MAKE) clean
+	@$(MAKE) monitoring-clean
+	@echo "$(BLUE)Full stack cleaned.$(RESET)"
+
 # Documentation
 
 docs: ## Open API documentation in browser
