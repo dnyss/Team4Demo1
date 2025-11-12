@@ -75,6 +75,52 @@ test-front: ## Run frontend tests - Development
 	@echo "$(BLUE)Running frontend tests...$(RESET)"
 	@docker compose -f docker-compose.dev.yaml exec web pnpm test --run
 
+# Test Database Commands
+
+test-db-setup: ## Set up test database environment
+	@echo "$(BLUE)Setting up test database environment...$(RESET)"
+	@docker compose -f docker-compose.test.yaml up -d db-test
+	@echo "$(BLUE)Waiting for test database to be ready...$(RESET)"
+	@sleep 15
+	@echo "$(BLUE)Test database is ready.$(RESET)"
+
+test-db-init: ## Initialize test database with tables
+	@echo "$(BLUE)Initializing test database tables...$(RESET)"
+	@docker compose -f docker-compose.test.yaml run --rm api-test python create_tables.py
+	@echo "$(BLUE)Test database tables created.$(RESET)"
+
+test-db: ## Run tests with isolated test database
+	@echo "$(BLUE)Starting test database...$(RESET)"
+	@docker compose -f docker-compose.test.yaml up -d db-test
+	@echo "$(BLUE)Waiting for test database to be ready...$(RESET)"
+	@sleep 15
+	@echo "$(BLUE)Running tests with test database...$(RESET)"
+	@docker compose -f docker-compose.test.yaml run --rm api-test pytest -v
+	@echo "$(BLUE)Stopping test database...$(RESET)"
+	@docker compose -f docker-compose.test.yaml down
+
+test-db-cov: ## Run tests with coverage using isolated test database
+	@echo "$(BLUE)Starting test database...$(RESET)"
+	@docker compose -f docker-compose.test.yaml up -d db-test
+	@echo "$(BLUE)Waiting for test database to be ready...$(RESET)"
+	@sleep 15
+	@echo "$(BLUE)Running tests with coverage using test database...$(RESET)"
+	@docker compose -f docker-compose.test.yaml run --rm api-test pytest -v --cov --cov-report=html --cov-report=term
+	@echo "$(BLUE)Stopping test database...$(RESET)"
+	@docker compose -f docker-compose.test.yaml down
+
+test-db-shell: ## Open MySQL shell for test database
+	@echo "$(BLUE)Opening test database MySQL shell...$(RESET)"
+	@docker compose -f docker-compose.test.yaml exec db-test mysql -uroot -p$${MYSQL_TEST_ROOT_PASSWORD:-test_admin} $${MYSQL_TEST_DATABASE:-bdd_test}
+
+test-db-clean: ## Stop and remove test database containers and volumes
+	@echo "$(BLUE)Cleaning up test database environment...$(RESET)"
+	@docker compose -f docker-compose.test.yaml down -v
+	@echo "$(BLUE)Test database cleanup complete.$(RESET)"
+
+test-db-logs: ## Show test database logs
+	@docker compose -f docker-compose.test.yaml logs -f db-test
+
 # Code Quality Commands
 
 lint: ## Run linters on backend and frontend - Development
