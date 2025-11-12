@@ -1,0 +1,65 @@
+services:
+  web:
+    build:
+      context: ./recipe-front
+      dockerfile: Dockerfile.dev
+    container_name: team4demo1_web_dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./recipe-front:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - api
+    networks:
+      - recipe-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: team4demo1_api_dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=development
+      - MYSQL_HOST=db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - recipe-network
+
+  db:
+    image: mysql:8.0
+    container_name: team4demo1_db_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-bdd}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - recipe-network
+
+networks:
+  recipe-network:
+    driver: bridge
+
+volumes:
+  mysql_data_dev:

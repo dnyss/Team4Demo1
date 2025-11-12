@@ -1,0 +1,35 @@
+# Development Dockerfile for Flask API
+FROM python:3.12-slim
+
+# Set working directory inside container
+WORKDIR /app
+
+# Install git for pre-commit and curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files first (for caching)
+COPY pyproject.toml requirements.txt ./
+
+# Install dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Install dev dependencies from pyproject.toml
+RUN pip install -e ".[dev]"
+
+# Copy the rest of the app code
+COPY . .
+
+# Expose Flask default port
+EXPOSE 5000
+
+# Set environment variables
+ENV FLASK_APP=app
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_ENV=development
+
+# Run the app with Flask development server
+CMD ["flask", "run"]

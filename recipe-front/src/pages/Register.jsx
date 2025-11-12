@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import useFormValidation from '../hooks/useFormValidation';
 import { registerSchema } from '../utils/validators';
+import apiClient from '../api/apiClient';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ const Register = () => {
     
     try {
       // Make API call to backend - note: backend expects 'name' not 'username'
-      const response = await axios.post('http://localhost:5000/users', {
+      const response = await apiClient.post('/users', {
         name: formData.username,
         email: formData.email,
         password: formData.password
