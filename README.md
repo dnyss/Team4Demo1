@@ -14,12 +14,53 @@ Dockerized Flask application. A shared cookbook app where users can add, browse,
 git clone https://github.com/dnyss/Team4Demo1.git
 cd Team4Demo1
 ```
-### 2 Give execution permissions to init script
+
+### 2 Configure environment variables
+
+#### Backend Configuration
+Create a `.env` file from the template:
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file and set your credentials:
+```bash
+# Database Configuration
+MYSQL_ROOT_PASSWORD=your_secure_password_here
+MYSQL_DATABASE=bdd
+MYSQL_USER=root
+MYSQL_HOST=db
+MYSQL_PORT=3306
+
+# JWT Configuration
+JWT_SECRET_KEY=your_jwt_secret_key_here_change_in_production
+
+# Flask Configuration
+FLASK_ENV=development
+```
+
+#### Frontend Configuration
+Create a `.env` file in the `recipe-front` directory:
+```bash
+cd recipe-front
+cp .env.example .env
+cd ..
+```
+
+Edit `recipe-front/.env` to configure the API URL:
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+**Important**: Never commit `.env` files to version control. They're already included in `.gitignore`.
+
+### 3 Give execution permissions to init script
 ```bash
 sudo chmod +x init.sh
 ```
 
-### 3 Build and start all services
+### 4 Build and start all services
 ```bash
 ./init.sh
 ```
@@ -47,7 +88,7 @@ docker compose exec api pre-commit run --all-files
 ## Development
 
 ### Updating Python Dependencies
-After modifying `pyproject.toml` or `extra-requirements.in`, regenerate `requirements.txt`:
+After modifying `pyproject.toml`, regenerate `requirements.txt`:
 ```bash
-pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt extra-requirements.in pyproject.toml
+pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt pyproject.toml
 ```

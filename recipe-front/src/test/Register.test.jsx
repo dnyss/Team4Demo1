@@ -2,12 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import Register from '../pages/Register';
 
-// Mock axios
-vi.mock('axios');
+// Mock apiClient
+vi.mock('../api/apiClient', () => ({
+  default: {
+    post: vi.fn(),
+  },
+}));
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -28,8 +31,13 @@ const RegisterWithRouter = () => (
 );
 
 describe('Register Component', () => {
-  beforeEach(() => {
+  let apiClient;
+  
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Import apiClient after mocking
+    const module = await import('../api/apiClient');
+    apiClient = module.default;
   });
 
   it('renders registration form with all fields', () => {
@@ -75,14 +83,14 @@ describe('Register Component', () => {
     });
     
     // Should not call API
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(apiClient.post).not.toHaveBeenCalled();
   });
 
   it('successfully registers a user and shows success modal', async () => {
     const user = userEvent.setup();
     
     // Mock successful API response
-    axios.post.mockResolvedValueOnce({
+    apiClient.post.mockResolvedValueOnce({
       status: 201,
       data: {
         id: 1,
@@ -105,7 +113,7 @@ describe('Register Component', () => {
     
     // Verify API was called with correct data
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/users', {
+      expect(apiClient.post).toHaveBeenCalledWith('/users', {
         name: 'testuser',
         email: 'test@example.com',
         password: 'password123'
@@ -124,7 +132,7 @@ describe('Register Component', () => {
     const user = userEvent.setup();
     
     // Mock a delayed API response
-    axios.post.mockImplementation(() => 
+    apiClient.post.mockImplementation(() => 
       new Promise(resolve => setTimeout(() => resolve({ status: 201, data: {} }), 100))
     );
     
@@ -152,7 +160,7 @@ describe('Register Component', () => {
     const user = userEvent.setup();
     
     // Mock API error response
-    axios.post.mockRejectedValueOnce({
+    apiClient.post.mockRejectedValueOnce({
       response: {
         status: 400,
         data: {
@@ -182,7 +190,7 @@ describe('Register Component', () => {
     const user = userEvent.setup();
     
     // Mock API error response with email-specific error
-    axios.post.mockRejectedValueOnce({
+    apiClient.post.mockRejectedValueOnce({
       response: {
         status: 400,
         data: {
@@ -209,7 +217,7 @@ describe('Register Component', () => {
     const user = userEvent.setup();
     
     // Mock network error (no response)
-    axios.post.mockRejectedValueOnce({
+    apiClient.post.mockRejectedValueOnce({
       request: {},
       message: 'Network Error'
     });
@@ -232,7 +240,7 @@ describe('Register Component', () => {
     const user = userEvent.setup();
     
     // Mock unexpected error
-    axios.post.mockRejectedValueOnce({
+    apiClient.post.mockRejectedValueOnce({
       message: 'Something went wrong'
     });
     
@@ -282,7 +290,7 @@ describe('Register Component', () => {
     const user = userEvent.setup();
     
     // Mock a delayed API response
-    axios.post.mockImplementation(() => 
+    apiClient.post.mockImplementation(() => 
       new Promise(resolve => setTimeout(() => resolve({ status: 201, data: {} }), 100))
     );
     
@@ -310,7 +318,7 @@ describe('Register Component', () => {
   it('navigates back when Go Back is clicked in success modal', async () => {
     const user = userEvent.setup();
     
-    axios.post.mockResolvedValueOnce({
+    apiClient.post.mockResolvedValueOnce({
       status: 201,
       data: { id: 1, name: 'testuser', email: 'test@example.com' }
     });
