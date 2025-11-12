@@ -3,20 +3,35 @@ import { Icon } from '@iconify/react';
 import { toast } from 'react-toastify';
 import apiClient from '../api/apiClient';
 import useAuthStore from '../store/AuthStore';
+import useFormValidation from '../hooks/useFormValidation';
+import { commentSchema } from '../utils/validators';
 
 const CommentBox = ({ recipeId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newComment, setNewComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingContent, setEditingContent] = useState('');
+  const [editingErrors, setEditingErrors] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
   const { isAuthenticated, userId } = useAuthStore();
 
+  // Form validation for new comment
+  const {
+    values: newCommentForm,
+    errors,
+    handleChange,
+    handleBlur,
+    validate,
+    reset
+  } = useFormValidation(commentSchema, {
+    content: ''
+  });
+
   // Fetch comments
   useEffect(() => {
     fetchComments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipeId]);
 
   const fetchComments = async () => {
@@ -35,24 +50,26 @@ const CommentBox = ({ recipeId }) => {
   const handleSubmitComment = async (e) => {
     e.preventDefault();
     
-    if (!newComment.trim()) {
-      toast.error('Please enter a comment');
+    if (!isAuthenticated) {
+      toast.error('Please login to comment');
       return;
     }
 
-    if (!isAuthenticated) {
-      toast.error('Please login to comment');
+    // Validate comment
+    const isValid = await validate();
+    if (!isValid) {
+      toast.error('Por favor corrige los errores en el comentario');
       return;
     }
 
     try {
       setSubmitting(true);
       await apiClient.post('/comments', {
-        content: newComment,
+        content: newCommentForm.content,
         recipe_id: recipeId
       });
       
-      setNewComment('');
+      reset();
       toast.success('Comment added successfully');
       await fetchComments(); // Refresh comments
     } catch (error) {
@@ -74,8 +91,13 @@ const CommentBox = ({ recipeId }) => {
   };
 
   const handleUpdateComment = async (commentId) => {
-    if (!editingContent.trim()) {
-      toast.error('Comment cannot be empty');
+    // Validate edited comment
+    try {
+      await commentSchema.validate({ content: editingContent });
+      setEditingErrors('');
+    } catch (error) {
+      setEditingErrors(error.message);
+      toast.error(error.message);
       return;
     }
 
@@ -88,6 +110,7 @@ const CommentBox = ({ recipeId }) => {
       toast.success('Comment updated successfully');
       setEditingCommentId(null);
       setEditingContent('');
+      setEditingErrors('');
       await fetchComments(); // Refresh comments
     } catch (error) {
       console.error('Error updating comment:', error);
@@ -135,18 +158,29 @@ const CommentBox = ({ recipeId }) => {
         <form onSubmit={handleSubmitComment} className="mb-8">
           <div className="mb-4">
             <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              name="content"
+              value={newCommentForm.content}
+              onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="Share your thoughts about this recipe..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none ${
+                errors.content ? 'border-red-500' : 'border-gray-300'
+              }`}
               rows="4"
               disabled={submitting}
+              aria-invalid={errors.content ? 'true' : 'false'}
+              aria-describedby={errors.content ? 'comment-error' : undefined}
             />
+            {errors.content && (
+              <p id="comment-error" className="mt-1 text-sm text-red-600" role="alert">
+                {errors.content}
+              </p>
+            )}
           </div>
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={submitting || !newComment.trim()}
+              disabled={submitting}
               className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
             >
               {submitting ? (
@@ -228,11 +262,23 @@ const CommentBox = ({ recipeId }) => {
                 <div className="mt-3">
                   <textarea
                     value={editingContent}
-                    onChange={(e) => setEditingContent(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    onChange={(e) => {
+                      setEditingContent(e.target.value);
+                      setEditingErrors('');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+                      editingErrors ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     rows="3"
                     disabled={submitting}
+                    aria-invalid={editingErrors ? 'true' : 'false'}
+                    aria-describedby={editingErrors ? `edit-comment-error-${comment.id}` : undefined}
                   />
+                  {editingErrors && (
+                    <p id={`edit-comment-error-${comment.id}`} className="mt-1 text-sm text-red-600" role="alert">
+                      {editingErrors}
+                    </p>
+                  )}
                   <div className="flex justify-end gap-2 mt-2">
                     <button
                       onClick={handleCancelEdit}
@@ -243,7 +289,7 @@ const CommentBox = ({ recipeId }) => {
                     </button>
                     <button
                       onClick={() => handleUpdateComment(comment.id)}
-                      disabled={submitting || !editingContent.trim()}
+                      disabled={submitting}
                       className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                       {submitting ? 'Saving...' : 'Save'}

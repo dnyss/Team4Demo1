@@ -5,13 +5,27 @@ import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import useRecipesStore from '../store/recipesStore';
+import useFormValidation from '../hooks/useFormValidation';
+import { recipeSchema } from '../utils/validators';
 
 const EditRecipe = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { updateRecipe, fetchRecipeById, currentRecipe, loading, error } = useRecipesStore();
+  const { updateRecipe, fetchRecipeById, currentRecipe, error } = useRecipesStore();
   
-  const [formData, setFormData] = useState({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+
+  const dishTypes = ['appetizer', 'main course', 'dessert', 'snack', 'beverage', 'other'];
+
+  const {
+    values: formData,
+    errors,
+    handleChange,
+    handleBlur,
+    validate,
+    setFormValues
+  } = useFormValidation(recipeSchema, {
     title: '',
     dish_type: '',
     ingredients: '',
@@ -20,12 +34,6 @@ const EditRecipe = () => {
     origin: '',
     servings: ''
   });
-
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-
-  const dishTypes = ['appetizer', 'main course', 'dessert', 'snack', 'beverage', 'other'];
 
   // Fetch recipe data on mount
   useEffect(() => {
@@ -48,7 +56,7 @@ const EditRecipe = () => {
   // Populate form when recipe data loads
   useEffect(() => {
     if (currentRecipe && currentRecipe.id === parseInt(id)) {
-      setFormData({
+      setFormValues({
         title: currentRecipe.title || '',
         dish_type: currentRecipe.dish_type || '',
         ingredients: currentRecipe.ingredients || '',
@@ -58,83 +66,13 @@ const EditRecipe = () => {
         servings: currentRecipe.servings?.toString() || ''
       });
     }
-  }, [currentRecipe, id]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error for this field when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Title validation
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
-    } else if (formData.title.length < 3) {
-      newErrors.title = 'Title must be at least 3 characters';
-    } else if (formData.title.length > 100) {
-      newErrors.title = 'Title must be less than 100 characters';
-    }
-
-    // Dish type validation
-    if (!formData.dish_type) {
-      newErrors.dish_type = 'Dish type is required';
-    }
-
-    // Ingredients validation
-    if (!formData.ingredients.trim()) {
-      newErrors.ingredients = 'Ingredients are required';
-    } else if (formData.ingredients.length < 10) {
-      newErrors.ingredients = 'Please provide more detailed ingredients (at least 10 characters)';
-    }
-
-    // Instructions validation
-    if (!formData.instructions.trim()) {
-      newErrors.instructions = 'Instructions are required';
-    } else if (formData.instructions.length < 20) {
-      newErrors.instructions = 'Please provide more detailed instructions (at least 20 characters)';
-    }
-
-    // Preparation time validation
-    if (!formData.preparation_time) {
-      newErrors.preparation_time = 'Preparation time is required';
-    } else {
-      const time = parseInt(formData.preparation_time);
-      if (isNaN(time) || time <= 0) {
-        newErrors.preparation_time = 'Preparation time must be a positive number';
-      } else if (time > 1440) {
-        newErrors.preparation_time = 'Preparation time cannot exceed 1440 minutes (24 hours)';
-      }
-    }
-
-    // Servings validation (optional but if provided must be valid)
-    if (formData.servings) {
-      const servings = parseInt(formData.servings);
-      if (isNaN(servings) || servings <= 0) {
-        newErrors.servings = 'Servings must be a positive number';
-      } else if (servings > 100) {
-        newErrors.servings = 'Servings cannot exceed 100';
-      }
-    }
-
-    // Origin validation (optional but limit length)
-    if (formData.origin && formData.origin.length > 100) {
-      newErrors.origin = 'Origin must be less than 100 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  }, [currentRecipe, id, setFormValues]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    const isValid = await validate();
+    if (!isValid) {
       toast.error('Please fix the errors in the form');
       return;
     }
@@ -245,11 +183,14 @@ const EditRecipe = () => {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={isSubmitting}
                 className={`w-full rounded-lg border ${errors.title ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
                 placeholder="e.g., Chocolate Chip Cookies"
+                aria-invalid={errors.title ? 'true' : 'false'}
+                aria-describedby={errors.title ? 'title-error' : undefined}
               />
-              {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
+              {errors.title && <p id="title-error" className="mt-1 text-sm text-red-500" role="alert">{errors.title}</p>}
             </div>
 
             {/* Dish Type */}
@@ -262,8 +203,11 @@ const EditRecipe = () => {
                 name="dish_type"
                 value={formData.dish_type}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={isSubmitting}
                 className={`w-full rounded-lg border ${errors.dish_type ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                aria-invalid={errors.dish_type ? 'true' : 'false'}
+                aria-describedby={errors.dish_type ? 'dish_type-error' : undefined}
               >
                 <option value="">Select a dish type</option>
                 {dishTypes.map(type => (
@@ -272,7 +216,7 @@ const EditRecipe = () => {
                   </option>
                 ))}
               </select>
-              {errors.dish_type && <p className="mt-1 text-sm text-red-500">{errors.dish_type}</p>}
+              {errors.dish_type && <p id="dish_type-error" className="mt-1 text-sm text-red-500" role="alert">{errors.dish_type}</p>}
             </div>
 
             {/* Preparation Time and Servings - Side by Side */}
@@ -288,13 +232,16 @@ const EditRecipe = () => {
                   name="preparation_time"
                   value={formData.preparation_time}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   disabled={isSubmitting}
                   min="1"
                   max="1440"
                   className={`w-full rounded-lg border ${errors.preparation_time ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
                   placeholder="e.g., 30"
+                  aria-invalid={errors.preparation_time ? 'true' : 'false'}
+                  aria-describedby={errors.preparation_time ? 'preparation_time-error' : undefined}
                 />
-                {errors.preparation_time && <p className="mt-1 text-sm text-red-500">{errors.preparation_time}</p>}
+                {errors.preparation_time && <p id="preparation_time-error" className="mt-1 text-sm text-red-500" role="alert">{errors.preparation_time}</p>}
               </div>
 
               {/* Servings */}
@@ -308,13 +255,16 @@ const EditRecipe = () => {
                   name="servings"
                   value={formData.servings}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   disabled={isSubmitting}
                   min="1"
                   max="100"
                   className={`w-full rounded-lg border ${errors.servings ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
                   placeholder="e.g., 4"
+                  aria-invalid={errors.servings ? 'true' : 'false'}
+                  aria-describedby={errors.servings ? 'servings-error' : undefined}
                 />
-                {errors.servings && <p className="mt-1 text-sm text-red-500">{errors.servings}</p>}
+                {errors.servings && <p id="servings-error" className="mt-1 text-sm text-red-500" role="alert">{errors.servings}</p>}
               </div>
             </div>
 
@@ -329,11 +279,14 @@ const EditRecipe = () => {
                 name="origin"
                 value={formData.origin}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={isSubmitting}
                 className={`w-full rounded-lg border ${errors.origin ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
                 placeholder="e.g., Italian, American, Mexican"
+                aria-invalid={errors.origin ? 'true' : 'false'}
+                aria-describedby={errors.origin ? 'origin-error' : undefined}
               />
-              {errors.origin && <p className="mt-1 text-sm text-red-500">{errors.origin}</p>}
+              {errors.origin && <p id="origin-error" className="mt-1 text-sm text-red-500" role="alert">{errors.origin}</p>}
             </div>
 
             {/* Ingredients */}
@@ -346,12 +299,15 @@ const EditRecipe = () => {
                 name="ingredients"
                 value={formData.ingredients}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={isSubmitting}
                 rows="6"
                 className={`w-full rounded-lg border ${errors.ingredients ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
                 placeholder="List all ingredients with quantities, one per line"
+                aria-invalid={errors.ingredients ? 'true' : 'false'}
+                aria-describedby={errors.ingredients ? 'ingredients-error' : undefined}
               />
-              {errors.ingredients && <p className="mt-1 text-sm text-red-500">{errors.ingredients}</p>}
+              {errors.ingredients && <p id="ingredients-error" className="mt-1 text-sm text-red-500" role="alert">{errors.ingredients}</p>}
               <p className="mt-1 text-xs text-gray-500">Tip: List each ingredient on a new line with quantities</p>
             </div>
 
@@ -365,12 +321,15 @@ const EditRecipe = () => {
                 name="instructions"
                 value={formData.instructions}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={isSubmitting}
                 rows="8"
                 className={`w-full rounded-lg border ${errors.instructions ? 'border-red-500' : 'border-gray-300'} px-4 py-2 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                aria-invalid={errors.instructions ? 'true' : 'false'}
+                aria-describedby={errors.instructions ? 'instructions-error' : undefined}
                 placeholder="Provide step-by-step instructions for preparing this recipe"
               />
-              {errors.instructions && <p className="mt-1 text-sm text-red-500">{errors.instructions}</p>}
+              {errors.instructions && <p id="instructions-error" className="mt-1 text-sm text-red-500" role="alert">{errors.instructions}</p>}
               <p className="mt-1 text-xs text-gray-500">Tip: Number your steps for clarity</p>
             </div>
 
