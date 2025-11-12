@@ -36,6 +36,7 @@ dependencies = [
     "pydantic_core==2.41.1",
     "PyJWT==2.10.1",
     "python-dotenv==1.0.0",
+    "gunicorn==21.2.0",
     "requests==2.32.4",
     "SQLAlchemy==2.0.44",
     "typing-inspection==0.4.2",
