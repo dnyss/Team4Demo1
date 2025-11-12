@@ -1,7 +1,9 @@
+# Development Dockerfile for React Frontend
 FROM node:20-alpine
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
 
 # Enable Corepack (ships with Node 20)
@@ -10,7 +12,11 @@ RUN corepack enable
 # Install dependencies
 RUN pnpm install
 
+# Copy application code
 COPY . .
 
+# Expose Vite dev server port
 EXPOSE 5173
+
+# Run development server with host flag to allow external connections
 CMD ["pnpm", "dev", "--host"]
