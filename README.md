@@ -1,94 +1,265 @@
 # Team 4 Demo 1
 
-## Community Recipee Book
+## Community Recipe Book
 Dockerized Flask application. A shared cookbook app where users can add, browse, and rate recipes.
 
-## Tech stack
-- Frontend: Vite + React js + SWC + Tailwind CSS
-- Backend: Python + Flask
-- DB: MySQL
+## Tech Stack
+- **Frontend**: Vite + React.js + SWC + Tailwind CSS
+- **Backend**: Python + Flask + SQLAlchemy
+- **Database**: MySQL 8.0
+- **Container Orchestration**: Docker + Docker Compose
 
-## Project setup
-### 1 Clone the repository
+## Prerequisites
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- Make (for convenience commands)
+- Git
+
+## Quick Start
+
+### 1. Clone the repository
 ```bash
 git clone https://github.com/dnyss/Team4Demo1.git
 cd Team4Demo1
 ```
 
-### 2 Configure environment variables
-
-#### Backend Configuration
-Create a `.env` file from the template:
+### 2. Set up environment variables
 ```bash
 cp .env.example .env
+# Edit .env with your configuration (default values work for development)
 ```
 
-Edit the `.env` file and set your credentials:
+### 3. Initialize the project
+```bash
+make init
+```
+
+This will:
+- Build all Docker images
+- Start all services
+- Create database tables
+- Seed the database with sample data
+
+The application will be available at:
+- **Frontend**: http://localhost:5173
+- **API**: http://localhost:5000
+- **API Documentation**: http://localhost:5000/apidocs
+
+## Development Commands
+
+The project uses a `Makefile` for convenient development workflows. Run `make help` to see all available commands.
+
+### Core Commands
+
+| Command | Description |
+|---------|-------------|
+| `make init` | Initialize project (full setup with DB) |
+| `make up` | Start all services |
+| `make down` | Stop all services |
+| `make rebuild` | Rebuild and restart web and api services |
+| `make restart` | Restart all services |
+| `make clean` | Remove all containers, volumes, and images |
+| `make status` | Show status of all services |
+
+### Testing Commands
+
+| Command | Description |
+|---------|-------------|
+| `make test` | Run backend tests |
+| `make test-cov` | Run backend tests with coverage report |
+| `make test-front` | Run frontend tests |
+
+### Code Quality Commands
+
+| Command | Description |
+|---------|-------------|
+| `make lint` | Run linters on backend and frontend |
+| `make lint-fix` | Run linters with auto-fix |
+| `make format` | Format code with pre-commit hooks |
+
+### Database Commands
+
+| Command | Description |
+|---------|-------------|
+| `make db-setup` | Create database tables |
+| `make db-seed` | Seed database with sample data |
+| `make db-shell` | Open MySQL shell |
+| `make db-reset` | Reset database (drop, recreate, and seed) |
+
+### Logging Commands
+
+| Command | Description |
+|---------|-------------|
+| `make logs` | Show logs from all services |
+| `make logs-api` | Show API logs only |
+| `make logs-web` | Show frontend logs only |
+| `make logs-db` | Show database logs only |
+
+### Shell Access Commands
+
+| Command | Description |
+|---------|-------------|
+| `make shell-api` | Open a shell in the API container |
+| `make shell-web` | Open a shell in the web container |
+| `make shell-db` | Open a shell in the database container |
+
+## Production Deployment
+
+### Build and run production environment
+```bash
+# Build production images
+make prod-build
+
+# Start production environment
+make prod-up
+
+# View production logs
+make prod-logs
+
+# Stop production environment
+make prod-down
+```
+
+The production setup includes:
+- Multi-stage Docker builds for optimized image sizes
+- Non-root users for enhanced security
+- Health checks for all services
+- Nginx for serving the frontend
+- Gunicorn for serving the Flask API
+- Resource limits (CPU and memory)
+
+## API Documentation
+- **Swagger UI**: http://localhost:5000/apidocs
+- **OpenAPI Spec**: http://localhost:5000/apispec_1.json
+
+## Environment Configuration
+
+The project uses environment variables for configuration. Key variables include:
+
 ```bash
 # Database Configuration
-MYSQL_ROOT_PASSWORD=your_secure_password_here
+MYSQL_ROOT_PASSWORD=your_password
 MYSQL_DATABASE=bdd
 MYSQL_USER=root
 MYSQL_HOST=db
 MYSQL_PORT=3306
 
 # JWT Configuration
-JWT_SECRET_KEY=your_jwt_secret_key_here_change_in_production
+JWT_SECRET_KEY=your_secret_key
 
 # Flask Configuration
 FLASK_ENV=development
 ```
 
-#### Frontend Configuration
-Create a `.env` file in the `recipe-front` directory:
+See `.env.example` for a complete list of configuration options.
+
+## Development Workflow
+
+### Working on Backend
 ```bash
-cd recipe-front
-cp .env.example .env
-cd ..
+# Make changes to Python files
+# The Flask dev server will auto-reload
+
+# Run tests
+make test
+
+# Run linter
+make lint
+
+# View logs
+make logs-api
 ```
 
-Edit `recipe-front/.env` to configure the API URL:
+### Working on Frontend
 ```bash
-# API Configuration
-VITE_API_BASE_URL=http://localhost:5000
+# Make changes to React files
+# Vite dev server will hot-reload
+
+# Run tests
+make test-front
+
+# Run linter
+make lint
+
+# View logs
+make logs-web
 ```
 
-**Important**: Never commit `.env` files to version control. They're already included in `.gitignore`.
+### Updating Dependencies
 
-### 3 Give execution permissions to init script
+#### Python Dependencies
+After modifying `pyproject.toml` or `extra-requirements.in`:
 ```bash
-sudo chmod +x init.sh
+make update-requirements
+make rebuild
 ```
 
-### 4 Build and start all services
+#### Frontend Dependencies
+After modifying `package.json`:
 ```bash
-./init.sh
+make install-deps-front
+make rebuild
 ```
 
-## API Documentation
-- **Swagger UI**: http://localhost:5000/apidocs
-- **OpenAPI Spec**: http://localhost:5000/apispec_1.json
+## Troubleshooting
 
-## Testing
+### Services won't start
+```bash
+# Check service status
+make status
 
-### Run backend tests inside the running container
-```bash
-docker compose exec api pytest -v
-```
-### Run frontend tests inside the running container
-```bash
-docker compose exec web pnpm test --run
-```
+# View logs for errors
+make logs
 
-### Run pre-commit
-```bash
-docker compose exec api pre-commit run --all-files
+# Clean up and reinitialize
+make clean
+make init
 ```
 
-## Development
-
-### Updating Python Dependencies
-After modifying `pyproject.toml`, regenerate `requirements.txt`:
+### Database connection issues
 ```bash
-pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt pyproject.toml
+# Reset the database
+make db-reset
+
+# Check database logs
+make logs-db
+
+# Access database shell
+make db-shell
 ```
+
+### Port conflicts
+If ports 5000, 5173, or 3306 are already in use, modify the port mappings in `docker-compose.dev.yaml`.
+
+## Project Structure
+```
+.
+├── app.py                      # Main Flask application
+├── database.py                 # Database configuration
+├── models/                     # SQLAlchemy models
+├── repositories/               # Data access layer
+├── services/                   # Business logic layer
+├── schemas/                    # Pydantic schemas
+├── utils/                      # Utility functions
+├── tests/                      # Backend tests
+├── recipe-front/               # React frontend
+│   ├── src/                    # Frontend source code
+│   ├── public/                 # Static assets
+│   └── package.json            # Frontend dependencies
+├── Dockerfile.dev              # Development Dockerfile (API)
+├── Dockerfile.prod             # Production Dockerfile (API)
+├── docker-compose.dev.yaml     # Development Docker Compose
+├── docker-compose.prod.yaml    # Production Docker Compose
+├── Makefile                    # Development commands
+├── pyproject.toml              # Python project metadata
+├── requirements.txt            # Python dependencies
+└── .env                        # Environment variables (not in git)
+```
+
+## Migration from Shell Scripts
+
+**Note**: The `init.sh` and `rebuild.sh` scripts were removed. To serve those already gone .sh scripts' purpose, use these commands:
+- `./init.sh` → `make init`
+- `./rebuild.sh` → `make rebuild`
+
+The Makefile provides better cross-platform support, more features, and follows standard DevOps practices.
