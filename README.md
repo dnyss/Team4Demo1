@@ -65,9 +65,14 @@ The project uses a `Makefile` for convenient development workflows. Run `make he
 
 | Command | Description |
 |---------|-------------|
-| `make test` | Run backend tests |
-| `make test-cov` | Run backend tests with coverage report |
+| `make test` | Run backend tests (dev database) |
+| `make test-cov` | Run backend tests with coverage report (dev database) |
 | `make test-front` | Run frontend tests |
+| `make test-db` | Run tests with isolated test database |
+| `make test-db-cov` | Run tests with coverage using test database |
+| `make test-db-clean` | Clean up test database environment |
+
+**For comprehensive testing documentation, see [TESTING.md](TESTING.md)**
 
 ### Code Quality Commands
 
