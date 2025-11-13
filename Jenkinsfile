@@ -260,10 +260,10 @@ EOF
 								-e MYSQL_DATABASE=bdd_test \
 								-e MYSQL_ROOT_PASSWORD=test_admin \
 								-e JWT_SECRET_KEY=${JWT_SECRET_KEY} \
-								-v \$(pwd)/htmlcov:/app/htmlcov \
-								-v \$(pwd)/test-results.xml:/app/test-results.xml \
+								-v \$(pwd):/workspace \
+								-w /app \
 								${BACKEND_IMAGE}:dev-${IMAGE_TAG} \
-								pytest -v --cov --cov-report=html --cov-report=term --junit-xml=test-results.xml
+								sh -c "pytest -v --cov --cov-report=html --cov-report=term --junitxml=/workspace/test-results.xml && cp -r htmlcov /workspace/ || (cp -r htmlcov /workspace/ 2>/dev/null; exit 1)"
 							
 							# Cleanup
 							echo "Cleaning up test containers..."
