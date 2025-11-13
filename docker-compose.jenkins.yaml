@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   jenkins:
     build:
@@ -29,7 +27,6 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     networks:
       - jenkins-network
-      - recipe-network  # Connect to app network for monitoring integration
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
       interval: 30s
@@ -45,10 +42,7 @@ services:
 networks:
   jenkins-network:
     driver: bridge
-  recipe-network:
-    external: true
-    # This connects Jenkins to the app network for monitoring integration
-    # If recipe-network doesn't exist, comment out 'external: true' and it will be created
+    name: jenkins-network
 
 volumes:
   jenkins_home:
