@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: team4demo1_jenkins
+    restart: unless-stopped
+    privileged: true
+    user: root
+    ports:
+      - "8080:8080"   # Jenkins Web UI
+      - "50000:50000" # Jenkins agent communication
+    volumes:
+      # Jenkins home directory (persists configuration, jobs, plugins, etc.)
+      - jenkins_home:/var/jenkins_home
+      
+      # Mount Docker socket to allow Jenkins to control Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+      # Mount project directory for builds
+      - .:/workspace
+    environment:
+      # Java options for Jenkins
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Xmx2g -Xms512m
+      
+      # Docker environment
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    networks:
+      - jenkins-network
+      - recipe-network  # Connect to app network for monitoring integration
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  jenkins-network:
+    driver: bridge
+  recipe-network:
+    external: true
+    # This connects Jenkins to the app network for monitoring integration
+    # If recipe-network doesn't exist, comment out 'external: true' and it will be created
+
+volumes:
+  jenkins_home:
+    name: team4demo1_jenkins_home

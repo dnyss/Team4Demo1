@@ -1,0 +1,4 @@
+# Ignorar archivos innecesarios en el contexto de build de Jenkins
+*.md
+.git
+.gitignore

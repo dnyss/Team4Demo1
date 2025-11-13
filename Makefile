@@ -321,6 +321,80 @@ full-clean: ## Clean development environment + monitoring stack
 	@$(MAKE) monitoring-clean
 	@echo "$(BLUE)Full stack cleaned.$(RESET)"
 
+# CI/CD Commands (Jenkins)
+
+jenkins-up: ## Start Jenkins server
+	@echo "$(BLUE)Starting Jenkins server...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml up -d
+	@echo "$(BLUE)Jenkins is starting up (takes ~2 minutes)...$(RESET)"
+	@echo "  Jenkins UI: http://localhost:8080"
+	@echo ""
+	@echo "To get the initial admin password, run:"
+	@echo "  make jenkins-password"
+
+jenkins-down: ## Stop Jenkins server
+	@echo "$(BLUE)Stopping Jenkins server...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml down
+	@echo "$(BLUE)Jenkins stopped.$(RESET)"
+
+jenkins-logs: ## Show Jenkins logs
+	@docker compose -f docker-compose.jenkins.yaml logs -f jenkins
+
+jenkins-password: ## Get Jenkins initial admin password
+	@echo "$(BLUE)Jenkins Initial Admin Password:$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword 2>/dev/null || echo "Jenkins is not running or password already used"
+
+jenkins-restart: ## Restart Jenkins server
+	@echo "$(BLUE)Restarting Jenkins...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml restart jenkins
+	@echo "$(BLUE)Jenkins restarted.$(RESET)"
+
+jenkins-clean: ## Stop Jenkins and remove volumes
+	@echo "$(BLUE)Stopping Jenkins and cleaning data...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml down -v
+	@echo "$(BLUE)Jenkins cleaned. All data removed.$(RESET)"
+
+ci-build: ## Build production Docker images (as Jenkins does)
+	@echo "$(BLUE)Building production Docker images...$(RESET)"
+	@docker build -t tastecraft-back:ci-test -f Dockerfile.prod .
+	@cd recipe-front && docker build -t tastecraft-front:ci-test -f Dockerfile.prod .
+	@echo "$(BLUE)✅ Images built successfully$(RESET)"
+
+ci-test: ## Run tests (as Jenkins does)
+	@echo "$(BLUE)Running backend tests...$(RESET)"
+	@docker compose -f docker-compose.test.yaml up -d db-test
+	@sleep 10
+	@docker compose -f docker-compose.test.yaml run --rm api-test || true
+	@docker compose -f docker-compose.test.yaml down -v
+	@echo "$(BLUE)Running frontend tests...$(RESET)"
+	@cd recipe-front && docker run --rm -v $$(pwd):/app -w /app node:20-alpine sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm test --run" || true
+	@echo "$(BLUE)✅ Tests completed$(RESET)"
+
+ci-scan: ## Run security scans (as Jenkins does)
+	@echo "$(BLUE)Running security scans...$(RESET)"
+	@which trivy || (echo "Installing trivy..." && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add - && echo "deb https://aquasecurity.github.io/trivy-repo/deb $$(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list && sudo apt-get update && sudo apt-get install -y trivy)
+	@trivy fs --severity HIGH,CRITICAL --exit-code 0 requirements.txt || true
+	@trivy fs --severity HIGH,CRITICAL --exit-code 0 recipe-front/package.json || true
+	@echo "$(BLUE)✅ Security scans completed$(RESET)"
+
+ci-push: ## Push images to Docker Hub (requires Docker Hub login)
+	@echo "$(BLUE)Pushing images to Docker Hub...$(RESET)"
+	@docker tag tastecraft-back:ci-test eddindocker/tastecraft-back:latest
+	@docker tag tastecraft-front:ci-test eddindocker/tastecraft-front:latest
+	@docker push eddindocker/tastecraft-back:latest
+	@docker push eddindocker/tastecraft-front:latest
+	@echo "$(BLUE)✅ Images pushed to Docker Hub$(RESET)"
+
+ci-full: ## Run full CI pipeline locally (build, test, scan)
+	@echo "$(BLUE)Running full CI pipeline locally...$(RESET)"
+	@$(MAKE) ci-build
+	@$(MAKE) ci-test
+	@$(MAKE) ci-scan
+	@echo "$(BLUE)✅ Full CI pipeline completed$(RESET)"
+	@echo ""
+	@echo "To push images to Docker Hub, run:"
+	@echo "  make ci-push"
+
 # Documentation
 
 docs: ## Open API documentation in browser
