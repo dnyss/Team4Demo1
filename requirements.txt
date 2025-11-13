@@ -171,6 +171,7 @@ flask==3.1.2 \
     #   community-recipe-book (pyproject.toml)
     #   flasgger
     #   flask-cors
+    #   prometheus-flask-exporter
 flask-cors==5.0.0 \
     --hash=sha256:5aadb4b950c4e93745034594d9f3ea6591f734bb3662e16e255ffbf5e89c88ef \
     --hash=sha256:b9e307d082a9261c100d8fb0ba909eec6a228ed1b60a8315fd85f783d61910bc
@@ -414,6 +415,16 @@ packaging==25.0 \
     # via
     #   flasgger
     #   gunicorn
+prometheus-client==0.21.0 \
+    --hash=sha256:4fa6b4dd0ac16d58bb587c04b1caae65b8c5043e85f778f42f5f632f6af2e166 \
+    --hash=sha256:96c83c606b71ff2b0a433c98889d275f51ffec6c5e267de37c7a2b5c9aa9233e
+    # via
+    #   community-recipe-book (pyproject.toml)
+    #   prometheus-flask-exporter
+prometheus-flask-exporter==0.23.1 \
+    --hash=sha256:587c770a1061e93d72c5cbcdefbd7b633fb764e39dffd7dd16932c9124559244 \
+    --hash=sha256:ab49b2c40b57cd35cd51e91e59b3c306b3754477095c4f3cf679034c5122398c
+    # via community-recipe-book (pyproject.toml)
 pydantic==2.12.0 \
     --hash=sha256:c1a077e6270dbfb37bfd8b498b3981e2bb18f68103720e51fa6c306a5a9af563 \
     --hash=sha256:f6a1da352d42790537e95e83a8bdfb91c7efbae63ffd0b86fa823899e807116f

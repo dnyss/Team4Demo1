@@ -1,15 +1,82 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from flasgger import Swagger
-from database import SessionLocal
+from database import SessionLocal, engine
 from services.user_service import UserService
 from services.recipe_service import RecipeService
 from services.comment_service import CommentService
 from utils.jwt_utils import generate_token, token_required
 from sqlalchemy.exc import ProgrammingError
 from swagger_config import swagger_config, swagger_template
+from prometheus_flask_exporter import PrometheusMetrics
+import logging
+import json
+import uuid
+from datetime import datetime
 
 app = Flask(__name__)
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'
+)
+
+class StructuredLogger:
+    def __init__(self, name):
+        self.logger = logging.getLogger(name)
+    
+    def log(self, level, message, **kwargs):
+        log_entry = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'level': level,
+            'message': message,
+            'service': 'recipe-api',
+            **kwargs
+        }
+        self.logger.log(getattr(logging, level), json.dumps(log_entry))
+
+logger = StructuredLogger(__name__)
+
+# Initialize Prometheus metrics
+metrics = PrometheusMetrics(app)
+
+# Custom metrics
+recipe_operations = metrics.counter(
+    'recipe_operations_total',
+    'Total recipe operations',
+    labels={'operation': lambda: getattr(g, 'operation_type', 'unknown')}
+)
+
+comment_operations = metrics.counter(
+    'comment_operations_total',
+    'Total comment operations',
+    labels={'operation': lambda: getattr(g, 'operation_type', 'unknown')}
+)
+
+user_operations = metrics.counter(
+    'user_operations_total',
+    'Total user operations',
+    labels={'operation': lambda: getattr(g, 'operation_type', 'unknown')}
+)
+
+# Request/Response logging middleware
+@app.before_request
+def log_request():
+    g.correlation_id = str(uuid.uuid4())
+    logger.log('INFO', 'Incoming request',
+               correlation_id=g.correlation_id,
+               method=request.method,
+               path=request.path,
+               remote_addr=request.remote_addr)
+
+@app.after_request
+def log_response(response):
+    logger.log('INFO', 'Response sent',
+               correlation_id=getattr(g, 'correlation_id', 'unknown'),
+               status_code=response.status_code,
+               content_length=response.content_length)
+    return response
 
 CORS(app, resources={
     r"/*": {
@@ -47,24 +114,104 @@ def home():
 @app.route('/health')
 def health():
     """
-    Health check endpoint
+    Basic health check endpoint
     ---
     tags:
       - Health
     responses:
       200:
-        description: System health status
+        description: System health status with timestamp
         schema:
           type: object
           properties:
             status:
               type: string
-              example: OK
-            database:
+              example: healthy
+            timestamp:
               type: string
-              example: connected
+              example: 2025-11-12T10:30:00.000000
     """
-    return jsonify({"status": "OK", "database": "connected"})
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat()
+    }), 200
+
+@app.route('/healthz/live')
+def liveness():
+    """
+    Liveness probe - is the app running?
+    ---
+    tags:
+      - Health
+    responses:
+      200:
+        description: Application is alive
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: alive
+    """
+    return jsonify({"status": "alive"}), 200
+
+@app.route('/healthz/ready')
+def readiness():
+    """
+    Readiness probe - is the app ready to serve traffic?
+    ---
+    tags:
+      - Health
+    responses:
+      200:
+        description: Application is ready
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: ready
+            checks:
+              type: object
+              properties:
+                database:
+                  type: string
+                  example: ok
+      503:
+        description: Application is not ready
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: not_ready
+            checks:
+              type: object
+            error:
+              type: string
+    """
+    try:
+        # Check database connectivity
+        db = SessionLocal()
+        db.execute('SELECT 1')
+        db.close()
+        return jsonify({
+            "status": "ready",
+            "checks": {
+                "database": "ok"
+            }
+        }), 200
+    except Exception as e:
+        logger.log('ERROR', 'Readiness check failed',
+                   error=str(e),
+                   correlation_id=getattr(g, 'correlation_id', 'unknown'))
+        return jsonify({
+            "status": "not_ready",
+            "checks": {
+                "database": "failed"
+            },
+            "error": str(e)
+        }), 503
 
 @app.route('/protected')
 @token_required
@@ -264,6 +411,9 @@ def create_recipe(current_user):
     """
     db = SessionLocal()
     try:
+        # Track operation for metrics
+        g.operation_type = 'create'
+        
         # Verify user still exists in database
         user = UserService.get_user_by_id(db, current_user['user_id'])
         if not user:
@@ -280,9 +430,19 @@ def create_recipe(current_user):
         
         recipe_create = RecipeCreate(**recipe_data)
         recipe = RecipeService.create_recipe(db, recipe_create)
+        
+        logger.log('INFO', 'Recipe created',
+                   correlation_id=g.correlation_id,
+                   recipe_id=recipe.id,
+                   user_id=current_user['user_id'])
+        
         return jsonify(recipe.model_dump()), 201
     except Exception as e:
         error_msg = str(e)
+        logger.log('ERROR', 'Recipe creation failed',
+                   correlation_id=g.correlation_id,
+                   error=error_msg,
+                   user_id=current_user['user_id'])
         # Handle foreign key constraint errors
         if "foreign key constraint fails" in error_msg.lower():
             return jsonify({
