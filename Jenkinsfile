@@ -309,15 +309,18 @@ EOF
 					steps {
 						echo "🔒 Scanning backend production image for vulnerabilities..."
 						sh """
-							# Install Trivy if not available (with retry for parallel execution)
-							if ! command -v trivy &> /dev/null; then
+							# Check if Trivy is already installed
+							if command -v trivy >/dev/null 2>&1; then
+								echo "✅ Trivy already installed: \$(trivy --version | head -1)"
+							else
 								echo "Installing Trivy..."
-								wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg
-								echo "deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | tee /etc/apt/sources.list.d/trivy.list
+								wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg 2>/dev/null
+								echo "deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | tee /etc/apt/sources.list.d/trivy.list >/dev/null
 								
 								# Retry apt-get update/install if locked
 								for i in 1 2 3 4 5; do
-									if apt-get update -qq && apt-get install -y -qq trivy; then
+									if apt-get update -qq 2>/dev/null && apt-get install -y -qq trivy 2>/dev/null; then
+										echo "✅ Trivy installed successfully"
 										break
 									fi
 									echo "APT locked, waiting 3 seconds (attempt \$i/5)..."
@@ -326,9 +329,11 @@ EOF
 							fi
 							
 							# Scan dependencies
+							echo "Scanning requirements.txt..."
 							trivy fs --severity HIGH,CRITICAL --exit-code 0 requirements.txt || true
 							
 							# Scan Docker image
+							echo "Scanning backend production image..."
 							trivy image --severity HIGH,CRITICAL --exit-code 0 ${BACKEND_IMAGE}:${IMAGE_TAG} || true
 						"""
 					}
@@ -338,15 +343,18 @@ EOF
 					steps {
 						echo "🔒 Scanning frontend production image for vulnerabilities..."
 						sh """
-							# Install Trivy if not available (with retry for parallel execution)
-							if ! command -v trivy &> /dev/null; then
+							# Check if Trivy is already installed
+							if command -v trivy >/dev/null 2>&1; then
+								echo "✅ Trivy already installed: \$(trivy --version | head -1)"
+							else
 								echo "Installing Trivy..."
-								wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg
-								echo "deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | tee /etc/apt/sources.list.d/trivy.list
+								wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg 2>/dev/null
+								echo "deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | tee /etc/apt/sources.list.d/trivy.list >/dev/null
 								
 								# Retry apt-get update/install if locked
 								for i in 1 2 3 4 5; do
-									if apt-get update -qq && apt-get install -y -qq trivy; then
+									if apt-get update -qq 2>/dev/null && apt-get install -y -qq trivy 2>/dev/null; then
+										echo "✅ Trivy installed successfully"
 										break
 									fi
 									echo "APT locked, waiting 3 seconds (attempt \$i/5)..."
@@ -357,9 +365,11 @@ EOF
 							cd recipe-front
 							
 							# Scan dependencies
+							echo "Scanning package.json..."
 							trivy fs --severity HIGH,CRITICAL --exit-code 0 package.json || true
 							
 							# Scan Docker image
+							echo "Scanning frontend production image..."
 							trivy image --severity HIGH,CRITICAL --exit-code 0 ${FRONTEND_IMAGE}:${IMAGE_TAG} || true
 						"""
 					}
