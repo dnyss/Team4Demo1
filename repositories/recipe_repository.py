@@ -1,5 +1,7 @@
-from sqlalchemy.orm import Session
 from typing import List, Optional
+
+from sqlalchemy.orm import Session
+
 from models.recipe import Recipe
 
 
@@ -67,5 +69,7 @@ class RecipeRepository:
         return db.query(Recipe).join(Recipe.user).filter(Recipe.id == recipe_id).first()
 
     @staticmethod
-    def get_recipes_with_comments_count(db: Session, skip: int = 0, limit: int = 100) -> List[Recipe]:
+    def get_recipes_with_comments_count(
+        db: Session, skip: int = 0, limit: int = 100
+    ) -> List[Recipe]:
         return db.query(Recipe).offset(skip).limit(limit).all()

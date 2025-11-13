@@ -1,9 +1,12 @@
-from sqlalchemy.orm import Session
 from typing import List, Optional
-from models.recipe import Recipe
+
+from sqlalchemy.orm import Session
+
 from repositories.recipe_repository import RecipeRepository
-from schemas.recipe_schemas import RecipeCreate, RecipeUpdate, RecipeResponse, RecipeWithUserResponse, \
-    RecipeWithCommentsResponse
+from schemas.recipe_schemas import (RecipeCreate, RecipeUpdate,
+                                     RecipeResponse,
+                                     RecipeWithUserResponse,
+                                     RecipeWithCommentsResponse)
 
 
 class RecipeService:
@@ -81,8 +84,10 @@ class RecipeService:
         return response
 
     @staticmethod
-    def update_recipe(db: Session, recipe_id: int, update_data: RecipeUpdate) -> Optional[RecipeResponse]:
-        existing_recipe = RecipeRepository.get_recipe_by_id(db, recipe_id)
+    def update_recipe(db: Session, recipe_id: int,
+                      update_data: RecipeUpdate) -> Optional[RecipeResponse]:
+        existing_recipe = RecipeRepository.get_recipe_by_id(
+            db, recipe_id)
         if not existing_recipe:
             return None
 
@@ -100,8 +105,10 @@ class RecipeService:
         return RecipeRepository.delete_recipe(db, recipe_id)
 
     @staticmethod
-    def get_recipe_with_user_details(db: Session, recipe_id: int) -> Optional[RecipeWithUserResponse]:
-        recipe = RecipeRepository.get_recipe_with_user_info(db, recipe_id)
+    def get_recipe_with_user_details(
+            db: Session, recipe_id: int) -> Optional[RecipeWithUserResponse]:
+        recipe = RecipeRepository.get_recipe_with_user_info(
+            db, recipe_id)
         if recipe:
             response_data = RecipeResponse.from_orm(recipe).model_dump()
             response_data["user_name"] = recipe.user.name
@@ -110,7 +117,9 @@ class RecipeService:
         return None
 
     @staticmethod
-    def get_recipe_with_comments(db: Session, recipe_id: int) -> Optional[RecipeWithCommentsResponse]:
+    def get_recipe_with_comments(
+            db: Session, recipe_id: int
+            ) -> Optional[RecipeWithCommentsResponse]:
         recipe = RecipeRepository.get_recipe_by_id(db, recipe_id)
         if recipe:
             response_data = RecipeResponse.from_orm(recipe).model_dump()

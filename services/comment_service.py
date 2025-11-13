@@ -1,8 +1,14 @@
-from sqlalchemy.orm import Session
 from typing import List, Optional
-from models.comment import Comment
+
+from sqlalchemy.orm import Session
+
 from repositories.comment_repository import CommentRepository
-from schemas.comment_schemas import CommentCreate, CommentUpdate, CommentResponse, CommentWithUserResponse
+from schemas.comment_schemas import (
+    CommentCreate,
+    CommentUpdate,
+    CommentResponse,
+    CommentWithUserResponse
+)
 
 
 class CommentService:
@@ -38,8 +44,12 @@ class CommentService:
         return CommentResponse.from_orm(db_comment)
 
     @staticmethod
-    def update_comment(db: Session, comment_id: int, update_data: CommentUpdate) -> Optional[CommentResponse]:
-        if update_data.rating is not None and (update_data.rating < 0 or update_data.rating > 5):
+    def update_comment(
+        db: Session, comment_id: int, update_data: CommentUpdate
+    ) -> Optional[CommentResponse]:
+        if update_data.rating is not None and (
+            update_data.rating < 0 or update_data.rating > 5
+        ):
             raise ValueError("Rating must be between 0 and 5")
 
         update_dict = update_data.model_dump(exclude_unset=True)
@@ -53,8 +63,12 @@ class CommentService:
         return CommentRepository.delete_comment(db, comment_id)
 
     @staticmethod
-    def get_comment_with_user_details(db: Session, comment_id: int) -> Optional[CommentWithUserResponse]:
-        comment = CommentRepository.get_comment_with_user_info(db, comment_id)
+    def get_comment_with_user_details(
+        db: Session, comment_id: int
+    ) -> Optional[CommentWithUserResponse]:
+        comment = CommentRepository.get_comment_with_user_info(
+            db, comment_id
+        )
         if comment:
             response_data = CommentResponse.from_orm(comment).model_dump()
             response_data["user_name"] = comment.user.name
@@ -63,8 +77,12 @@ class CommentService:
         return None
 
     @staticmethod
-    def get_recipe_comments_with_users(db: Session, recipe_id: int) -> List[CommentWithUserResponse]:
-        comments = CommentRepository.get_comments_by_recipe(db, recipe_id)
+    def get_recipe_comments_with_users(
+        db: Session, recipe_id: int
+    ) -> List[CommentWithUserResponse]:
+        comments = CommentRepository.get_comments_by_recipe(
+            db, recipe_id
+        )
         result = []
         for comment in comments:
             response_data = CommentResponse.from_orm(comment).model_dump()
