@@ -117,16 +117,20 @@ class TestUserRecipesCRUD:
         data = json.loads(response.data)
         assert data == []
     
-    def test_create_recipe_success(self, client, auth_headers, monkeypatch):
+    def test_create_recipe_success(self, client, auth_headers, test_user, monkeypatch):
         """Test creating a new recipe as authenticated user"""
         from services import recipe_service
         
         class DummyRecipe:
+            def __init__(self, user_id):
+                self.user_id = user_id
+                self.id = 1
+            
             def model_dump(self):
                 return {
-                    "id": 1,
+                    "id": self.id,
                     "title": "New Recipe",
-                    "user_id": 1,
+                    "user_id": self.user_id,
                     "ingredients": "flour, sugar",
                     "instructions": "Mix and bake"
                 }
@@ -134,7 +138,7 @@ class TestUserRecipesCRUD:
         monkeypatch.setattr(
             recipe_service.RecipeService,
             "create_recipe",
-            lambda db, recipe: DummyRecipe()
+            lambda db, recipe: DummyRecipe(test_user.id)
         )
         
         recipe_data = {
@@ -151,7 +155,7 @@ class TestUserRecipesCRUD:
         assert response.status_code == 201
         data = json.loads(response.data)
         assert data['title'] == "New Recipe"
-        assert data['user_id'] == 1
+        assert data['user_id'] == test_user.id
     
     def test_create_recipe_unauthorized(self, client):
         """Test creating recipe without authentication"""
@@ -173,24 +177,27 @@ class TestUserRecipesCRUD:
         
         assert response.status_code == 400
     
-    def test_update_recipe_success(self, client, auth_headers, monkeypatch):
+    def test_update_recipe_success(self, client, auth_headers, test_user, monkeypatch):
         """Test updating own recipe"""
         from services import recipe_service
         
         class DummyRecipe:
-            user_id = 1
+            def __init__(self, user_id):
+                self.user_id = user_id
+                self.id = 1
+            
             def model_dump(self):
-                return {"id": 1, "title": "Updated Recipe", "user_id": 1}
+                return {"id": self.id, "title": "Updated Recipe", "user_id": self.user_id}
         
         monkeypatch.setattr(
             recipe_service.RecipeService,
             "get_recipe_by_id",
-            lambda db, recipe_id: DummyRecipe()
+            lambda db, recipe_id: DummyRecipe(test_user.id)
         )
         monkeypatch.setattr(
             recipe_service.RecipeService,
             "update_recipe",
-            lambda db, recipe_id, data: DummyRecipe()
+            lambda db, recipe_id, data: DummyRecipe(test_user.id)
         )
         
         update_data = {"title": "Updated Recipe"}
@@ -256,19 +263,22 @@ class TestUserRecipesCRUD:
         
         assert response.status_code == 404
     
-    def test_delete_recipe_success(self, client, auth_headers, monkeypatch):
+    def test_delete_recipe_success(self, client, auth_headers, test_user, monkeypatch):
         """Test deleting own recipe"""
         from services import recipe_service
         
         class DummyRecipe:
-            user_id = 1
+            def __init__(self, user_id):
+                self.user_id = user_id
+                self.id = 1
+            
             def model_dump(self):
-                return {"id": 1, "title": "Recipe", "user_id": 1}
+                return {"id": self.id, "title": "Recipe", "user_id": self.user_id}
         
         monkeypatch.setattr(
             recipe_service.RecipeService,
             "get_recipe_by_id",
-            lambda db, recipe_id: DummyRecipe()
+            lambda db, recipe_id: DummyRecipe(test_user.id)
         )
         monkeypatch.setattr(
             recipe_service.RecipeService,
