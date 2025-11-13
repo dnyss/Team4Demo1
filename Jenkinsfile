@@ -54,11 +54,29 @@ pipeline {
 			steps {
 				script {
 					// Extract branch name - works for both multibranch and regular pipelines
-					if (!env.BRANCH_NAME) {
-						env.BRANCH_NAME = sh(
+					if (!env.BRANCH_NAME || env.BRANCH_NAME == 'null') {
+						// Try to get branch from git in detached HEAD state
+						def branchName = sh(
 							script: 'git rev-parse --abbrev-ref HEAD',
 							returnStdout: true
 						).trim()
+						
+						// If in detached HEAD state, get branch from remote tracking
+						if (branchName == 'HEAD') {
+							branchName = sh(
+								script: 'git branch -r --contains HEAD | grep origin | head -1 | sed "s|.*origin/||"',
+								returnStdout: true
+							).trim()
+							
+							// Fallback: try to get from GIT_BRANCH env var
+							if (!branchName || branchName == '') {
+								branchName = env.GIT_BRANCH ?: 'unknown'
+								// Remove origin/ prefix if present
+								branchName = branchName.replaceAll(/^origin\//, '')
+							}
+						}
+						
+						env.BRANCH_NAME = branchName
 					}
 					
 					echo "🚀 Starting CI/CD Pipeline for ${env.JOB_NAME}"
@@ -211,6 +229,9 @@ EOF
 							# Clean up any existing test containers
 							docker compose -f docker-compose.test.yaml down -v || true
 							
+							# Force remove any orphaned containers with these names
+							docker rm -f team4demo1_db_test team4demo1_api_test 2>/dev/null || true
+							
 							# Start test database
 							docker compose -f docker-compose.test.yaml up -d db-test
 							
@@ -279,11 +300,17 @@ EOF
 					steps {
 						echo "🧪 Running frontend tests..."
 						sh '''
+							# Verify the directory exists and contains package.json
+							ls -la "${WORKSPACE}/recipe-front/" || echo "Directory listing failed"
+							test -f "${WORKSPACE}/recipe-front/package.json" && echo "✅ package.json found" || echo "❌ package.json NOT found"
+							
+							# Run tests with explicit path
+							cd "${WORKSPACE}/recipe-front"
 							docker run --rm \
-								-v "${WORKSPACE}/recipe-front:/app" \
+								-v "${PWD}:/app" \
 								-w /app \
 								node:20-alpine \
-								sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm test --run" || true
+								sh -c "ls -la /app && corepack enable && pnpm install --frozen-lockfile && pnpm test --run" || true
 						'''
 					}
 				}
