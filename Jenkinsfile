@@ -338,13 +338,20 @@ EOF
 					steps {
 						echo "🔒 Scanning backend for vulnerabilities..."
 						sh """
-							# Install Trivy if not available
+							# Install Trivy if not available (with retry for parallel execution)
 							if ! command -v trivy &> /dev/null; then
 								echo "Installing Trivy..."
 								wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg
 								echo "deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | tee /etc/apt/sources.list.d/trivy.list
-								apt-get update -qq
-								apt-get install -y -qq trivy
+								
+								# Retry apt-get update/install if locked
+								for i in 1 2 3 4 5; do
+									if apt-get update -qq && apt-get install -y -qq trivy; then
+										break
+									fi
+									echo "APT locked, waiting 3 seconds (attempt \$i/5)..."
+									sleep 3
+								done
 							fi
 							
 							# Scan dependencies
@@ -360,13 +367,20 @@ EOF
 					steps {
 						echo "🔒 Scanning frontend for vulnerabilities..."
 						sh """
-							# Install Trivy if not available
+							# Install Trivy if not available (with retry for parallel execution)
 							if ! command -v trivy &> /dev/null; then
 								echo "Installing Trivy..."
 								wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg
 								echo "deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | tee /etc/apt/sources.list.d/trivy.list
-								apt-get update -qq
-								apt-get install -y -qq trivy
+								
+								# Retry apt-get update/install if locked
+								for i in 1 2 3 4 5; do
+									if apt-get update -qq && apt-get install -y -qq trivy; then
+										break
+									fi
+									echo "APT locked, waiting 3 seconds (attempt \$i/5)..."
+									sleep 3
+								done
 							fi
 							
 							cd recipe-front

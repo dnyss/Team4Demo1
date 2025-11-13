@@ -20,6 +20,7 @@ env/
 htmlcov/
 .tox/
 *.log
+!tests/
 
 # IDEs
 .vscode/
