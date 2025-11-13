@@ -53,6 +53,14 @@ pipeline {
 		stage('Initialize') {
 			steps {
 				script {
+					// Extract branch name - works for both multibranch and regular pipelines
+					if (!env.BRANCH_NAME) {
+						env.BRANCH_NAME = sh(
+							script: 'git rev-parse --abbrev-ref HEAD',
+							returnStdout: true
+						).trim()
+					}
+					
 					echo "🚀 Starting CI/CD Pipeline for ${env.JOB_NAME}"
 					echo "Build: #${env.BUILD_NUMBER}"
 					echo "Branch: ${env.BRANCH_NAME}"
@@ -200,6 +208,9 @@ EOF
 					steps {
 						echo "🧪 Running backend tests with coverage..."
 						sh '''
+							# Clean up any existing test containers
+							docker compose -f docker-compose.test.yaml down -v || true
+							
 							# Start test database
 							docker compose -f docker-compose.test.yaml up -d db-test
 							
@@ -242,7 +253,7 @@ EOF
 								// Check coverage threshold
 								try {
 									def coverage = sh(
-										script: 'grep -oP "pc_cov\">\\K[0-9]+" htmlcov/index.html | head -1',
+										script: 'grep -oP "pc_cov\\">\\K[0-9]+" htmlcov/index.html | head -1',
 										returnStdout: true
 									).trim().toInteger()
 									
@@ -268,9 +279,8 @@ EOF
 					steps {
 						echo "🧪 Running frontend tests..."
 						sh '''
-							cd recipe-front
 							docker run --rm \
-								-v $(pwd):/app \
+								-v "${WORKSPACE}/recipe-front:/app" \
 								-w /app \
 								node:20-alpine \
 								sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm test --run" || true
@@ -543,6 +553,10 @@ def sendDiscordNotification(String status) {
 			break
 	}
 	
+	// Ensure BUILD_URL is set, fallback to JENKINS_URL if needed
+	def buildUrl = env.BUILD_URL ?: (env.JENKINS_URL ? "${env.JENKINS_URL}/job/${env.JOB_NAME}/${env.BUILD_NUMBER}/" : 'N/A')
+	def branchName = env.BRANCH_NAME ?: 'unknown'
+	
 	def payload = """
 {
 	"embeds": [{
@@ -552,7 +566,7 @@ def sendDiscordNotification(String status) {
 		"fields": [
 			{
 				"name": "Branch",
-				"value": "${env.BRANCH_NAME}",
+				"value": "${branchName}",
 				"inline": true
 			},
 			{
@@ -572,7 +586,7 @@ def sendDiscordNotification(String status) {
 			},
 			{
 				"name": "Build URL",
-				"value": "[View Build](${env.BUILD_URL})",
+				"value": "[View Build](${buildUrl})",
 				"inline": false
 			}
 		],
