@@ -228,6 +228,8 @@ EOF
 							# TODO: Re-enable tests after fixing CI/CD environment issues
 							echo "⚠️  Backend tests temporarily skipped"
 							echo "Tests should be run locally with: docker-compose -f docker-compose.test.yaml up"
+
+							#This step was failing because the CI environment couldn't find the test files, probably due to a misconfiguration in the Flask enviroment
 						"""
 					}
 				}
