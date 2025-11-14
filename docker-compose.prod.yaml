@@ -1,6 +1,6 @@
 services:
   web:
-    image: eddindocker/tastecraft-front:1.0.1
+    image: eddindocker/tastecraft-front:latest
     container_name: team4demo1_web_prod
     ports:
       - "80:80"
@@ -31,7 +31,7 @@ services:
         max-file: "3"
 
   api:
-    image: eddindocker/tastecraft-back:1.0.1
+    image: eddindocker/tastecraft-back:latest
     container_name: team4demo1_api_prod
     ports:
       - "5000:5000"
