@@ -1,11 +1,6 @@
 import pytest
 from app import app
-
-@pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+# Note: client fixture is provided by conftest.py with database initialization
 
 
 def test_home(client):
@@ -20,7 +15,8 @@ def test_health(client):
     response = client.get('/health')
     assert response.status_code == 200
     data = response.get_json()
-    assert data["status"] == "OK"
+    assert data["status"] == "healthy"
+    assert "timestamp" in data
 
 
 def test_get_users(client, monkeypatch):
@@ -77,6 +73,11 @@ def test_create_recipe(client, monkeypatch):
         db.close()
 
     class DummyRecipe:
+        def __init__(self):
+            self.id = 1
+            self.user_id = user_id
+            self.title = "Pizza"
+        
         def model_dump(self):
             return {
                 "id": 1, 

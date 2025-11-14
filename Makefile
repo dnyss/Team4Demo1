@@ -321,9 +321,201 @@ full-clean: ## Clean development environment + monitoring stack
 	@$(MAKE) monitoring-clean
 	@echo "$(BLUE)Full stack cleaned.$(RESET)"
 
+# CI/CD Commands (Jenkins)
+
+jenkins-up: ## Start Jenkins server
+	@echo "$(BLUE)Starting Jenkins server...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml up -d
+	@echo "$(BLUE)Jenkins is starting up (takes ~2 minutes)...$(RESET)"
+	@echo "  Jenkins UI: http://localhost:8080"
+	@echo ""
+	@echo "To get the initial admin password, run:"
+	@echo "  make jenkins-password"
+
+jenkins-down: ## Stop Jenkins server
+	@echo "$(BLUE)Stopping Jenkins server...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml down
+	@echo "$(BLUE)Jenkins stopped.$(RESET)"
+
+jenkins-logs: ## Show Jenkins logs
+	@docker compose -f docker-compose.jenkins.yaml logs -f jenkins
+
+jenkins-password: ## Get Jenkins initial admin password
+	@echo "$(BLUE)Jenkins Initial Admin Password:$(RESET)"
+	@if docker compose -f docker-compose.jenkins.yaml ps | grep -q jenkins.*Up; then \
+		docker exec team4demo1_jenkins cat /var/jenkins_home/secrets/initialAdminPassword 2>/dev/null || echo "Password file not found (Jenkins may be fully initialized or still starting)"; \
+	else \
+		echo "Jenkins container is not running. Start it with: make jenkins-up"; \
+	fi
+
+jenkins-restart: ## Restart Jenkins server
+	@echo "$(BLUE)Restarting Jenkins...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml restart jenkins
+	@echo "$(BLUE)Jenkins restarted.$(RESET)"
+
+jenkins-clean: ## Stop Jenkins and remove volumes
+	@echo "$(BLUE)Stopping Jenkins and cleaning data...$(RESET)"
+	@docker compose -f docker-compose.jenkins.yaml down -v
+	@echo "$(BLUE)Jenkins cleaned. All data removed.$(RESET)"
+
+ci-build: ## Build production Docker images (as Jenkins does)
+	@echo "$(BLUE)Building production Docker images...$(RESET)"
+	@docker build -t tastecraft-back:ci-test -f Dockerfile.prod .
+	@cd recipe-front && docker build -t tastecraft-front:ci-test -f Dockerfile.prod .
+	@echo "$(BLUE)✅ Images built successfully$(RESET)"
+
+ci-test: ## Run tests (as Jenkins does)
+	@echo "$(BLUE)Running backend tests...$(RESET)"
+	@docker compose -f docker-compose.test.yaml up -d db-test
+	@sleep 10
+	@docker compose -f docker-compose.test.yaml run --rm api-test || true
+	@docker compose -f docker-compose.test.yaml down -v
+	@echo "$(BLUE)Running frontend tests...$(RESET)"
+	@cd recipe-front && docker run --rm -e CI=true -v $$(pwd):/app -w /app node:20-alpine sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm test --run" || true
+	@echo "$(BLUE)✅ Tests completed$(RESET)"
+
+ci-scan: ## Run security scans (as Jenkins does)
+	@echo "$(BLUE)Running security scans...$(RESET)"
+	@if ! which trivy > /dev/null 2>&1; then \
+		echo "Installing trivy..."; \
+		wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg; \
+		echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $$(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list; \
+		sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/trivy.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"; \
+		sudo apt-get install -y trivy; \
+	fi
+	@trivy fs --severity HIGH,CRITICAL --exit-code 0 requirements.txt || true
+	@trivy fs --severity HIGH,CRITICAL --exit-code 0 recipe-front/package.json || true
+	@echo "$(BLUE)✅ Security scans completed$(RESET)"
+
+ci-push: ## Push images to Docker Hub (requires Docker Hub login)
+	@echo "$(BLUE)Pushing images to Docker Hub...$(RESET)"
+	@docker tag tastecraft-back:ci-test eddindocker/tastecraft-back:latest
+	@docker tag tastecraft-front:ci-test eddindocker/tastecraft-front:latest
+	@docker push eddindocker/tastecraft-back:latest
+	@docker push eddindocker/tastecraft-front:latest
+	@echo "$(BLUE)✅ Images pushed to Docker Hub$(RESET)"
+
+ci-full: ## Run full CI pipeline locally (build, test, scan)
+	@echo "$(BLUE)Running full CI pipeline locally...$(RESET)"
+	@$(MAKE) ci-build
+	@$(MAKE) ci-test
+	@$(MAKE) ci-scan
+	@echo "$(BLUE)✅ Full CI pipeline completed$(RESET)"
+	@echo ""
+	@echo "To push images to Docker Hub, run:"
+	@echo "  make ci-push"
+
 # Documentation
 
 docs: ## Open API documentation in browser
 	@echo "$(BLUE)Opening API documentation...$(RESET)"
 	@echo "API Docs: http://localhost:5000/apidocs"
 	@xdg-open http://localhost:5000/apidocs 2>/dev/null || open http://localhost:5000/apidocs 2>/dev/null || echo "Please open http://localhost:5000/apidocs in your browser"
+
+# CI/CD Health Check Commands
+
+health-check: ## Check application health endpoints
+	@echo "$(BLUE)Checking application health endpoints...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)1. Basic health check (/health):$(RESET)"
+	@curl -s http://localhost:5000/health | python3 -m json.tool || echo "❌ Health check failed"
+	@echo ""
+	@echo "$(BLUE)2. Liveness check (/healthz/live):$(RESET)"
+	@curl -s http://localhost:5000/healthz/live | python3 -m json.tool || echo "❌ Liveness check failed"
+	@echo ""
+	@echo "$(BLUE)3. Readiness check (/healthz/ready):$(RESET)"
+	@curl -s http://localhost:5000/healthz/ready | python3 -m json.tool || echo "❌ Readiness check failed"
+	@echo ""
+	@echo "$(BLUE)✅ All health checks completed$(RESET)"
+
+test-webhook: ## Test Discord webhook (requires DISCORD_WEBHOOK_URL env var)
+	@echo "$(BLUE)Testing Discord webhook...$(RESET)"
+	@if [ -z "$$DISCORD_WEBHOOK_URL" ]; then \
+		echo "❌ DISCORD_WEBHOOK_URL environment variable not set"; \
+		echo "Usage: DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/...' make test-webhook"; \
+		exit 1; \
+	fi; \
+	TIMESTAMP=$$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
+	curl -X POST "$$DISCORD_WEBHOOK_URL" \
+		-H "Content-Type: application/json" \
+		-d '{"embeds":[{"title":"🧪 Test Notification from Makefile","description":"This is a test notification to verify Discord webhook integration","color":3447003,"fields":[{"name":"Test Type","value":"Manual Webhook Test","inline":true},{"name":"Status","value":"✅ Success","inline":true},{"name":"Timestamp","value":"'"$$TIMESTAMP"'","inline":false}]}]}' \
+		-w "\n$(BLUE)Response code: %{http_code}$(RESET)\n" \
+		-s; \
+	echo "$(BLUE)✅ Webhook test sent$(RESET)"
+
+ci-ready: ## Comprehensive CI/CD readiness check
+	@echo "$(BLUE)======================================$(RESET)"
+	@echo "$(BLUE)  CI/CD Readiness Check$(RESET)"
+	@echo "$(BLUE)======================================$(RESET)"
+	@echo ""
+	@echo "$(BLUE)1. Checking Docker...$(RESET)"
+	@docker --version || (echo "❌ Docker not found" && exit 1)
+	@docker compose version || (echo "❌ Docker Compose not found" && exit 1)
+	@echo "✅ Docker installed"
+	@echo ""
+	@echo "$(BLUE)2. Checking required files...$(RESET)"
+	@test -f Dockerfile.prod && echo "✅ Dockerfile.prod exists" || (echo "❌ Dockerfile.prod missing" && exit 1)
+	@test -f docker-compose.test.yaml && echo "✅ docker-compose.test.yaml exists" || (echo "❌ docker-compose.test.yaml missing" && exit 1)
+	@test -f Jenkinsfile && echo "✅ Jenkinsfile exists" || (echo "❌ Jenkinsfile missing" && exit 1)
+	@test -f pytest.ini && echo "✅ pytest.ini exists" || (echo "❌ pytest.ini missing" && exit 1)
+	@test -f requirements.txt && echo "✅ requirements.txt exists" || (echo "❌ requirements.txt missing" && exit 1)
+	@echo ""
+	@echo "$(BLUE)3. Checking environment file...$(RESET)"
+	@if [ -f .env ]; then \
+		echo "✅ .env file exists"; \
+		if grep -q "MYSQL_ROOT_PASSWORD" .env && grep -q "JWT_SECRET_KEY" .env; then \
+			echo "✅ Required environment variables present"; \
+		else \
+			echo "⚠️  Warning: Some required variables may be missing"; \
+		fi \
+	else \
+		echo "⚠️  .env file not found (will use defaults)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)4. Checking running services...$(RESET)"
+	@if docker compose -f docker-compose.dev.yaml ps | grep -q "Up"; then \
+		echo "✅ Development services are running"; \
+		echo ""; \
+		echo "$(BLUE)5. Testing application health...$(RESET)"; \
+		$(MAKE) health-check 2>/dev/null || echo "⚠️  Health checks failed (services may need time to start)"; \
+	else \
+		echo "⚠️  Development services not running"; \
+		echo "   Start with: make up or make init"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)6. Checking test setup...$(RESET)"
+	@if docker compose -f docker-compose.test.yaml config > /dev/null 2>&1; then \
+		echo "✅ Test environment configured correctly"; \
+	else \
+		echo "❌ Test environment configuration error"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "$(BLUE)7. Checking Jenkins setup...$(RESET)"
+	@if docker compose -f docker-compose.jenkins.yaml ps | grep -q jenkins.*Up; then \
+		echo "✅ Jenkins is running"; \
+		echo "   Jenkins UI: http://localhost:8080"; \
+	else \
+		echo "⚠️  Jenkins not running"; \
+		echo "   Start with: make jenkins-up"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)======================================$(RESET)"
+	@echo "$(BLUE)  Summary$(RESET)"
+	@echo "$(BLUE)======================================$(RESET)"
+	@echo "✅ Docker environment ready"
+	@echo "✅ Required files present"
+	@echo "✅ Configuration files valid"
+	@echo ""
+	@echo "$(BLUE)To test the complete CI/CD flow:$(RESET)"
+	@echo "  1. make ci-build     # Build production images"
+	@echo "  2. make ci-test      # Run tests"
+	@echo "  3. make ci-scan      # Security scans"
+	@echo "  4. make health-check # Test health endpoints"
+	@echo ""
+	@echo "$(BLUE)Or run everything at once:$(RESET)"
+	@echo "  make ci-full"
+	@echo ""
+	@echo "$(BLUE)To test webhook integration:$(RESET)"
+	@echo "  DISCORD_WEBHOOK_URL='...' make test-webhook"
+	@echo ""

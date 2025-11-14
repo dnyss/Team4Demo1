@@ -20,7 +20,7 @@ RUN pip install --upgrade pip && \
 # Install dev dependencies from pyproject.toml
 RUN pip install -e ".[dev]"
 
-# Copy the rest of the app code
+# Copy the rest of the app code (includes tests/)
 COPY . .
 
 # Expose Flask default port

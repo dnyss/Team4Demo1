@@ -1,18 +1,20 @@
+import json
+import logging
+import uuid
+from datetime import datetime
+
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from flasgger import Swagger
+from sqlalchemy.exc import ProgrammingError
+from prometheus_flask_exporter import PrometheusMetrics
+
 from database import SessionLocal, engine
 from services.user_service import UserService
 from services.recipe_service import RecipeService
 from services.comment_service import CommentService
 from utils.jwt_utils import generate_token, token_required
-from sqlalchemy.exc import ProgrammingError
 from swagger_config import swagger_config, swagger_template
-from prometheus_flask_exporter import PrometheusMetrics
-import logging
-import json
-import uuid
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -25,7 +27,7 @@ logging.basicConfig(
 class StructuredLogger:
     def __init__(self, name):
         self.logger = logging.getLogger(name)
-    
+
     def log(self, level, message, **kwargs):
         log_entry = {
             'timestamp': datetime.utcnow().isoformat(),
@@ -192,8 +194,9 @@ def readiness():
     """
     try:
         # Check database connectivity
+        from sqlalchemy import text
         db = SessionLocal()
-        db.execute('SELECT 1')
+        db.execute(text('SELECT 1'))
         db.close()
         return jsonify({
             "status": "ready",
@@ -348,23 +351,23 @@ def login():
     db = SessionLocal()
     try:
         login_data = request.json
-        
+
         # Validate required fields
         if not login_data or 'email' not in login_data or 'password' not in login_data:
             return jsonify({"error": "Email and password are required"}), 400
-        
+
         email = login_data['email']
         password = login_data['password']
-        
+
         # Authenticate user
         user = UserService.authenticate_user(db, email, password)
-        
+
         if not user:
             return jsonify({"error": "Invalid email or password"}), 401
-        
+
         # Generate JWT token
         token = generate_token(user.id, user.name, user.email)
-        
+
         return jsonify({
             "token": token,
             "user_id": user.id,
@@ -413,7 +416,7 @@ def create_recipe(current_user):
     try:
         # Track operation for metrics
         g.operation_type = 'create'
-        
+
         # Verify user still exists in database
         user = UserService.get_user_by_id(db, current_user['user_id'])
         if not user:
@@ -421,21 +424,21 @@ def create_recipe(current_user):
                 "error": "User not found. Your account may have been deleted.",
                 "solution": "Please log in again or contact support."
             }), 404
-        
+
         recipe_data = request.json
         from schemas.recipe_schemas import RecipeCreate
-        
+
         # Automatically set the user_id from the JWT token
         recipe_data['user_id'] = current_user['user_id']
-        
+
         recipe_create = RecipeCreate(**recipe_data)
         recipe = RecipeService.create_recipe(db, recipe_create)
-        
+
         logger.log('INFO', 'Recipe created',
                    correlation_id=g.correlation_id,
                    recipe_id=recipe.id,
                    user_id=current_user['user_id'])
-        
+
         return jsonify(recipe.model_dump()), 201
     except Exception as e:
         error_msg = str(e)
@@ -530,17 +533,17 @@ def update_recipe(current_user, recipe_id):
         recipe = RecipeService.get_recipe_by_id(db, recipe_id)
         if not recipe:
             return jsonify({"error": "Recipe not found"}), 404
-        
+
         # Check if user owns the recipe
         if recipe.user_id != current_user['user_id']:
             return jsonify({"error": "Forbidden: You can only edit your own recipes"}), 403
-        
+
         # Update the recipe
         recipe_data = request.json
         from schemas.recipe_schemas import RecipeUpdate
         recipe_update = RecipeUpdate(**recipe_data)
         updated_recipe = RecipeService.update_recipe(db, recipe_id, recipe_update)
-        
+
         if updated_recipe:
             return jsonify(updated_recipe.model_dump())
         return jsonify({"error": "Failed to update recipe"}), 500
@@ -559,11 +562,11 @@ def delete_recipe(current_user, recipe_id):
         recipe = RecipeService.get_recipe_by_id(db, recipe_id)
         if not recipe:
             return jsonify({"error": "Recipe not found"}), 404
-        
+
         # Check if user owns the recipe
         if recipe.user_id != current_user['user_id']:
             return jsonify({"error": "Forbidden: You can only delete your own recipes"}), 403
-        
+
         # Delete the recipe
         success = RecipeService.delete_recipe(db, recipe_id)
         if success:
@@ -594,19 +597,19 @@ def search_current_user_recipes(current_user):
     db = SessionLocal()
     try:
         search_query = request.args.get('q', '').strip()
-        
+
         if not search_query:
             return jsonify([])
-        
+
         # Get all user recipes first, then filter by search
         all_user_recipes = RecipeService.get_recipes_by_user(db, current_user['user_id'])
-        
+
         # Filter recipes by title (case-insensitive)
         filtered_recipes = [
             recipe for recipe in all_user_recipes
             if search_query.lower() in recipe.title.lower()
         ]
-        
+
         return jsonify([recipe.model_dump() for recipe in filtered_recipes])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -630,11 +633,11 @@ def search_recipes():
     try:
         # Get search query from query parameters
         search_query = request.args.get('q', '').strip()
-        
+
         if not search_query:
             # If no query provided, return empty list
             return jsonify([])
-        
+
         # Search recipes by title (case-insensitive)
         recipes = RecipeService.search_recipes(db, search_query)
         return jsonify([recipe.model_dump() for recipe in recipes])
@@ -718,17 +721,17 @@ def update_comment(current_user, comment_id):
         comment = CommentService.get_comment_by_id(db, comment_id)
         if not comment:
             return jsonify({"error": "Comment not found"}), 404
-        
+
         # Check if user owns the comment
         if comment.user_id != current_user['user_id']:
             return jsonify({"error": "Forbidden: You can only edit your own comments"}), 403
-        
+
         # Update the comment
         comment_data = request.json
         from schemas.comment_schemas import CommentUpdate
         comment_update = CommentUpdate(**comment_data)
         updated_comment = CommentService.update_comment(db, comment_id, comment_update)
-        
+
         if updated_comment:
             return jsonify(updated_comment.model_dump())
         return jsonify({"error": "Failed to update comment"}), 500
@@ -747,11 +750,11 @@ def delete_comment(current_user, comment_id):
         comment = CommentService.get_comment_by_id(db, comment_id)
         if not comment:
             return jsonify({"error": "Comment not found"}), 404
-        
+
         # Check if user owns the comment
         if comment.user_id != current_user['user_id']:
             return jsonify({"error": "Forbidden: You can only delete your own comments"}), 403
-        
+
         # Delete the comment
         success = CommentService.delete_comment(db, comment_id)
         if success:

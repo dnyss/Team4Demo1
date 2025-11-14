@@ -339,6 +339,81 @@ If ports 5000, 5173, or 3306 are already in use, modify the port mappings in `do
 └── .env                        # Environment variables (not in git)
 ```
 
+## CI/CD Pipeline (Jenkins)
+
+### 🚀 Jenkins Server Setup
+
+The project includes a complete CI/CD pipeline powered by Jenkins. The pipeline automates:
+- Building Docker images
+- Running tests with coverage
+- Security vulnerability scanning
+- Publishing images to Docker Hub
+- Discord notifications
+- Jira ticket integration
+
+#### Quick Start
+
+1. **Start Jenkins server**:
+```bash
+make jenkins-up
+```
+
+2. **Get initial admin password**:
+```bash
+make jenkins-password
+```
+
+3. **Access Jenkins**:
+Open http://localhost:8080 and complete the setup wizard.
+
+4. **Configure credentials**:
+Follow the comprehensive guide: [docs/JENKINS_SETUP_GUIDE.md](docs/JENKINS_SETUP_GUIDE.md)
+
+#### Jenkins Commands
+
+| Command | Description |
+|---------|-------------|
+| `make jenkins-up` | Start Jenkins server |
+| `make jenkins-down` | Stop Jenkins server |
+| `make jenkins-logs` | View Jenkins logs |
+| `make jenkins-password` | Get initial admin password |
+| `make jenkins-restart` | Restart Jenkins |
+| `make jenkins-clean` | Stop and remove all Jenkins data |
+
+#### Local CI Testing
+
+Test the CI pipeline locally before pushing:
+
+| Command | Description |
+|---------|-------------|
+| `make ci-build` | Build production Docker images |
+| `make ci-test` | Run all tests (backend + frontend) |
+| `make ci-scan` | Run security vulnerability scans |
+| `make ci-full` | Run complete CI pipeline locally |
+| `make ci-push` | Push images to Docker Hub |
+
+#### Pipeline Triggers
+
+The Jenkins pipeline automatically runs on:
+- Push to `main`, `develop`, or `MFLP-*` branches
+- Pull requests to protected branches
+- Manual trigger from Jenkins UI
+
+#### Required Credentials
+
+Configure these in Jenkins (see [JENKINS_SETUP_GUIDE.md](docs/JENKINS_SETUP_GUIDE.md)):
+- Docker Hub credentials
+- MySQL root password
+- JWT secret key
+- Discord webhook URL
+- Jira API token (optional)
+
+#### Documentation
+
+- **Full Setup**: [docs/JENKINS_SETUP_GUIDE.md](docs/JENKINS_SETUP_GUIDE.md)
+- **Quick Reference**: [docs/JENKINS_QUICK_REFERENCE.md](docs/JENKINS_QUICK_REFERENCE.md)
+- **Jira Tickets**: [Jira_tickets.md](Jira_tickets.md) (see MFLP-84)
+
 ## Migration from Shell Scripts
 
 **Note**: The `init.sh` and `rebuild.sh` scripts were removed. To serve those already gone .sh scripts' purpose, use these commands:

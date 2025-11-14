@@ -36,6 +36,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY --chown=appuser:appuser . .
 
+# Remove test files and development artifacts from production image
+RUN rm -rf tests/ __pycache__/ .pytest_cache/ htmlcov/ *.pyc .coverage
+
 # Switch to non-root user
 USER appuser
 

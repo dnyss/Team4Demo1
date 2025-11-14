@@ -1,6 +1,6 @@
 services:
   web:
-    image: eddindocker/tastecraft-front:1.0.1
+    image: eddindocker/tastecraft-front:latest
     container_name: team4demo1_web_prod
     ports:
       - "80:80"
@@ -31,7 +31,7 @@ services:
         max-file: "3"
 
   api:
-    image: eddindocker/tastecraft-back:1.0.1
+    image: eddindocker/tastecraft-back:latest
     container_name: team4demo1_api_prod
     ports:
       - "5000:5000"
@@ -39,10 +39,6 @@ services:
       - .env
     environment:
       - FLASK_ENV=production
-      - MYSQL_HOST=db
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:
@@ -66,43 +62,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  db:
-    image: mysql:8.0
-    container_name: team4demo1_db_prod
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-bdd}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data_prod:/var/lib/mysql
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - recipe-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-
 networks:
   recipe-network:
     driver: bridge
 
-volumes:
-  mysql_data_prod:
